@@ -99,6 +99,18 @@ This specification does **not** define:
 | **ojs-middleware.md** | Extension | Enqueue and execution middleware chains |
 | **ojs-worker-protocol.md** | Extension | Worker lifecycle and coordination |
 | **ojs-conformance.md** | Meta | Conformance levels and requirements |
+| **ojs-extension-lifecycle.md** | Meta | Extension tiers, promotion, and governance |
+| **ojs-rate-limiting.md** | Official Extension | Rate limiting and concurrency control |
+| **ojs-admin-api.md** | Official Extension | Admin/operator control-plane API |
+| **ojs-testing.md** | Official Extension | Testing modes and assertion helpers |
+| **ojs-observability.md** | Official Extension | OpenTelemetry conventions and metrics |
+| **ojs-backpressure.md** | Official Extension | Bounded queues and enqueue-side pressure |
+| **ojs-graceful-shutdown.md** | Official Extension | Signal handling, drain, K8s integration |
+| **ojs-dead-letter.md** | Official Extension | Dead letter queue management |
+| **ojs-job-versioning.md** | Experimental Extension | Job versioning and schema evolution |
+| **ojs-multi-tenancy.md** | Experimental Extension | Multi-tenancy and fairness |
+| **ojs-encryption.md** | Experimental Extension | Client-side encryption and codec |
+| **ojs-framework-adapters.md** | Experimental Extension | Transactional enqueue and framework integration |
 
 ---
 
@@ -130,7 +142,7 @@ Throughout this document, requirements are annotated with a *Rationale* explaini
 : User-defined logic that processes a job of a given type. Handlers are registered with a worker and invoked when a matching job is fetched.
 
 **Backend**
-: The storage and transport layer that manages job persistence, state transitions, ordering, and delivery. Also referred to as a "broker" in some systems. The specification defines the behavioral contract a backend must implement, not how it works internally.
+: The storage and transport layer that manages job persistence, state transitions, ordering, and delivery. Also referred to as a "broker" in some systems. The specification defines the behavioral contract a backend MUST implement, not how it works internally.
 
 **Client**
 : A process that creates and enqueues jobs. Clients interact with the backend to submit jobs for asynchronous processing.
@@ -495,7 +507,37 @@ The lifecycle defines exactly **eight** states:
                                         └─────────────┘
 ```
 
-### 6.3 Valid State Transitions
+### 6.3 Formal State Transition Table
+
+The following table defines every valid state transition. Any transition not listed in this table is invalid and MUST be rejected by the backend. *Rationale: A closed transition set prevents undefined behavior and ensures all implementations agree on valid state flows.*
+
+| From State | Event/Operation | To State | Side Effects | Condition |
+|-----------|----------------|----------|-------------|-----------|
+| *(initial)* | PUSH | `scheduled` | Set `created_at`, `enqueued_at` | `scheduled_at` is in the future |
+| *(initial)* | PUSH | `available` | Set `created_at`, `enqueued_at` | `scheduled_at` is absent or in the past |
+| *(initial)* | PUSH | `pending` | Set `created_at`, `enqueued_at` | `pending` flag is set |
+| `scheduled` | Timer | `available` | Clear scheduling metadata | `scheduled_at` <= current time |
+| `pending` | ACTIVATE | `available` | Record activation timestamp | External activation received |
+| `available` | FETCH | `active` | Set `started_at`, increment `attempt`, start visibility timeout | Worker claims job |
+| `active` | ACK | `completed` | Set `completed_at`, store `result` | Handler returned success |
+| `active` | FAIL | `retryable` | Record error in `errors[]`, calculate next retry time | `attempt` < `retry_policy.max_attempts` AND error is retryable |
+| `active` | FAIL | `discarded` | Record error in `errors[]`, set `discarded_at` | `attempt` >= `retry_policy.max_attempts` OR error is non-retryable |
+| `active` | CANCEL | `cancelled` | Set `cancelled_at` | CANCEL operation received |
+| `active` | Timeout | `available` | Clear `started_at`, record timeout error | Visibility timeout expired without ACK/FAIL |
+| `retryable` | Timer | `available` | — | Backoff delay has elapsed |
+| `scheduled` | CANCEL | `cancelled` | Set `cancelled_at` | CANCEL before execution |
+| `available` | CANCEL | `cancelled` | Set `cancelled_at` | CANCEL before claim |
+| `pending` | CANCEL | `cancelled` | Set `cancelled_at` | CANCEL before activation |
+| `retryable` | CANCEL | `cancelled` | Set `cancelled_at` | CANCEL during retry wait |
+| `discarded` | RETRY (manual) | `available` | Reset `attempt` to 0, clear errors | Operator-initiated manual retry (MAY support) |
+
+> **Invariants:**
+> 1. All state transitions MUST be atomic. *Rationale: Partial state changes can cause duplicate processing or lost jobs.*
+> 2. Terminal states (`completed`, `cancelled`, `discarded`) MUST NOT have outgoing transitions except the optional `discarded` → `available` manual retry.
+> 3. A job MUST be in exactly one state at any given time.
+> 4. The `attempt` counter MUST be monotonically increasing for a given job.
+
+### 6.4 Valid State Transitions
 
 The following table defines every valid state transition. Any transition not listed here is **invalid** and MUST be rejected.
 
@@ -525,7 +567,7 @@ The following transitions are explicitly **invalid** and MUST be rejected:
 - `scheduled` -> `active` (a scheduled job must pass through `available`)
 - `retryable` -> `active` (a retryable job must pass through `available`)
 
-### 6.4 Transition Semantics
+### 6.5 Transition Semantics
 
 1. **State transitions MUST be atomic.** An implementation MUST ensure that a state transition either fully completes or does not occur at all. Partial transitions (where the state changes but associated data updates fail) MUST NOT be possible.
 
@@ -802,7 +844,34 @@ The `meta` object on the job envelope is the primary extension mechanism for use
 - Business-level correlation (`correlation_id` in `meta`)
 - Arbitrary user-defined metadata
 
-### 11.7 Backend-Specific Extensions
+### 11.7 Rate Limiting and Concurrency Control
+
+Server-side rate limiting, concurrency limits, and throttling are defined in [ojs-rate-limiting.md](./ojs-rate-limiting.md). This is an official extension (see Section 11.9) that implementations MAY opt into.
+
+### 11.8 Admin / Operator API
+
+The control-plane API for queue management, job inspection, bulk operations, worker management, and system-level operations is defined in [ojs-admin-api.md](./ojs-admin-api.md). This is an official extension that implementations MAY opt into.
+
+### 11.9 Extension Lifecycle
+
+OJS uses a three-tier extension model (core, official, experimental) that governs how features are categorized, how implementations declare support, and how features progress from community proposals to stable requirements. The full model, promotion criteria, and manifest declaration format are defined in [ojs-extension-lifecycle.md](./ojs-extension-lifecycle.md). Additional official and experimental extensions include:
+
+**Official extensions** (opt-in, stable):
+
+- **Testing**: Fake, inline, and real testing modes with standard assertion helpers ([ojs-testing.md](./ojs-testing.md)).
+- **Observability**: OpenTelemetry semantic conventions, span names, metrics, and trace context propagation ([ojs-observability.md](./ojs-observability.md)).
+- **Backpressure**: Bounded queue semantics and enqueue-side pressure control ([ojs-backpressure.md](./ojs-backpressure.md)).
+- **Graceful shutdown**: Signal handling, drain semantics, and container orchestrator integration ([ojs-graceful-shutdown.md](./ojs-graceful-shutdown.md)).
+- **Dead letter**: DLQ retention, pruning, manual retry, and automatic replay ([ojs-dead-letter.md](./ojs-dead-letter.md)).
+
+**Experimental extensions** (opt-in, may change):
+
+- **Job versioning**: Schema evolution, version routing, and canary deployments ([ojs-job-versioning.md](./ojs-job-versioning.md)).
+- **Multi-tenancy**: Tenant isolation, fairness scheduling, and per-tenant resource limits ([ojs-multi-tenancy.md](./ojs-multi-tenancy.md)).
+- **Encryption**: Client-side encryption via codec architecture and Codec Server ([ojs-encryption.md](./ojs-encryption.md)).
+- **Framework adapters**: Transactional enqueue and the outbox pattern for framework integration ([ojs-framework-adapters.md](./ojs-framework-adapters.md)).
+
+### 11.10 Backend-Specific Extensions
 
 Implementations MAY define backend-specific attributes and behaviors beyond what this specification requires, provided they:
 
