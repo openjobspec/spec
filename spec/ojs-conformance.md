@@ -66,7 +66,7 @@ OJS defines five conformance levels, numbered 0 through 4. Each level builds on 
 
 ### 2.1 Level 0: Core
 
-Level 0 defines the absolute minimum a system must implement to be called an OJS implementation. A Level 0 implementation can enqueue jobs, assign them to workers, execute them, and report success or failure.
+Level 0 defines the absolute minimum a system MUST implement to be called an OJS implementation. A Level 0 implementation can enqueue jobs, assign them to workers, execute them, and report success or failure.
 
 #### 2.1.1 Job Envelope (L0-ENV)
 
@@ -167,7 +167,7 @@ Level 0 defines the absolute minimum a system must implement to be called an OJS
 
 **L0-MW-002**: Implementations MUST support execution middleware chains (middleware that wraps job execution).
 
-**Rationale**: Execution middleware enables cross-cutting concerns (logging, metrics, error handling, timeout enforcement) to be composed without modifying handler code. Without middleware, every handler must independently implement these concerns, leading to inconsistency and duplication.
+**Rationale**: Execution middleware enables cross-cutting concerns (logging, metrics, error handling, timeout enforcement) to be composed without modifying handler code. Without middleware, every handler would independently implement these concerns, leading to inconsistency and duplication.
 
 ---
 
@@ -500,7 +500,27 @@ The conformance manifest MUST be a JSON object with the following structure:
   "conformance_tier": "runtime",
   "protocols": ["http", "grpc"],
   "backend": "redis",
-  "extensions": ["bulk_purge", "queue_migration"],
+  "extensions": {
+    "official": [
+      {
+        "name": "rate-limiting",
+        "uri": "urn:ojs:ext:rate-limiting",
+        "version": "1.0.0"
+      },
+      {
+        "name": "admin-api",
+        "uri": "urn:ojs:ext:admin-api",
+        "version": "1.0.0"
+      }
+    ],
+    "experimental": [
+      {
+        "name": "job-versioning",
+        "uri": "urn:ojs:ext:experimental:job-versioning",
+        "version": "0.1.0"
+      }
+    ]
+  },
   "schema_validation": true,
   "unique_job_strength": "strong",
   "test_suite_version": "1.0.0",
@@ -522,11 +542,44 @@ The conformance manifest MUST be a JSON object with the following structure:
 | `conformance_tier`     | string           | Yes      | One of: `"parser"`, `"runtime"`, `"full"`.                                |
 | `protocols`            | array of string  | Yes      | Supported protocol bindings (e.g., `["http"]`, `["http", "grpc"]`).       |
 | `backend`              | string           | Yes      | Backend type (e.g., `"redis"`, `"postgres"`, `"memory"`, `"kafka"`).      |
-| `extensions`           | array of string  | No       | Non-standard extensions supported by this implementation.                 |
+| `extensions`           | object or array  | No       | Extensions supported by this implementation (see Section 4.2.1).          |
 | `schema_validation`    | boolean          | No       | Whether the implementation validates job envelopes against JSON Schema.   |
 | `unique_job_strength`  | string           | No       | `"strong"` or `"best_effort"`. Required if `conformance_level` >= 4.      |
 | `test_suite_version`   | string           | No       | Version of the OJS conformance test suite that was passed.                |
 | `test_suite_passed_at` | string           | No       | RFC 3339 timestamp of when the test suite was last passed.                |
+
+#### 4.2.1 Extensions Field
+
+The `extensions` field declares which OJS extensions the implementation supports, organized by tier as defined in the [Extension Lifecycle Specification](./ojs-extension-lifecycle.md).
+
+**Structured format (RECOMMENDED)**:
+
+When using the structured format, `extensions` is an object with two optional keys:
+
+| Field                         | Type    | Description                                                                |
+|-------------------------------|---------|----------------------------------------------------------------------------|
+| `extensions.official`         | array   | Official extensions supported. Each entry has `name`, `uri`, and `version`. |
+| `extensions.experimental`     | array   | Experimental extensions supported. Each entry has `name`, `uri`, and `version`. |
+
+Each extension entry MUST contain:
+
+| Field     | Type   | Required | Description                                                    |
+|-----------|--------|----------|----------------------------------------------------------------|
+| `name`    | string | Yes      | Extension name (e.g., `"rate-limiting"`).                      |
+| `uri`     | string | Yes      | Full extension URI (e.g., `"urn:ojs:ext:rate-limiting"`).      |
+| `version` | string | Yes      | SemVer version of the extension specification implemented.     |
+
+**Legacy format (backward compatible)**:
+
+For backward compatibility, `extensions` MAY also be a flat array of strings. Consumers MUST handle both formats. When the flat array format is encountered, all entries SHOULD be treated as custom (non-standard) extensions.
+
+```json
+{
+  "extensions": ["bulk_purge", "queue_migration"]
+}
+```
+
+**Rationale**: The structured format enables clients to discover extension support with version information, which is critical for feature negotiation (see ojs-extension-lifecycle.md Section 8). The legacy format is preserved to avoid breaking existing implementations during migration.
 
 ### 4.3 Manifest Endpoint
 
