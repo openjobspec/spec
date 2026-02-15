@@ -21,7 +21,7 @@ All non-trivial changes to OJS go through a formal RFC process. See [RFC Process
 
 Building an OJS-compliant library in a new language or for a new backend is one of the most valuable contributions you can make. To get started:
 
-1. Read the [Core Specification](ojs-core.md) and the [JSON Wire Format](ojs-json-format.md) end to end.
+1. Read the [Core Specification](spec/ojs-core.md) and the [JSON Wire Format](spec/ojs-json-format.md) end to end.
 2. Pick a conformance level to target (start with Level 0).
 3. Use the [ojs-conformance](https://github.com/openjobspec/ojs-conformance) test suite to validate your implementation.
 4. Open an issue to let us know you are working on it -- we can provide guidance and early feedback.

@@ -42,38 +42,99 @@ This separation means you can add a new transport without touching the core mode
 
 | Document | Description |
 |----------|-------------|
-| [ojs-core.md](ojs-core.md) | **Core Specification (Layer 1)** -- Abstract data model, required and optional attributes, type system, extension points |
+| [ojs-core.md](spec/ojs-core.md) | **Core Specification (Layer 1)** -- Abstract data model, required and optional attributes, type system, extension points |
 
 ### Wire Formats
 
 | Document | Description |
 |----------|-------------|
-| [ojs-json-format.md](ojs-json-format.md) | **JSON Wire Format (Layer 2)** -- JSON serialization rules, attribute mapping, batch encoding |
+| [ojs-json-format.md](spec/ojs-json-format.md) | **JSON Wire Format (Layer 2)** -- JSON serialization rules, attribute mapping, batch encoding |
+| [ojs-protobuf-format.md](spec/ojs-protobuf-format.md) | **Protobuf Wire Format (Layer 2)** -- Binary serialization, Protobuf schema design, type mapping, batch encoding |
 
 ### Protocol Bindings
 
 | Document | Description |
 |----------|-------------|
-| [ojs-http-binding.md](ojs-http-binding.md) | **HTTP Protocol Binding (Layer 3)** -- HTTP method mapping, headers, status codes |
-| [ojs-grpc-binding.md](ojs-grpc-binding.md) | **gRPC Protocol Binding (Layer 3)** -- Protobuf service definition, streaming, error codes |
+| [ojs-http-binding.md](spec/ojs-http-binding.md) | **HTTP Protocol Binding (Layer 3)** -- HTTP method mapping, headers, status codes |
+| [ojs-grpc-binding.md](spec/ojs-grpc-binding.md) | **gRPC Protocol Binding (Layer 3)** -- Protobuf service definition, streaming, error codes |
+| [ojs-amqp-binding.md](spec/ojs-amqp-binding.md) | **AMQP Protocol Binding (Layer 3)** -- RabbitMQ/AMQP 0-9-1 queue mapping, exchange topology, retry via DLX |
 
 ### Extensions
 
 | Document | Description |
 |----------|-------------|
-| [ojs-retry.md](ojs-retry.md) | **Retry Policy** -- Backoff strategies, max attempts, dead-letter semantics |
-| [ojs-unique-jobs.md](ojs-unique-jobs.md) | **Unique Jobs / Deduplication** -- Uniqueness keys, lock windows, conflict resolution |
-| [ojs-workflows.md](ojs-workflows.md) | **Workflow Primitives** -- DAG-based job composition, fan-out/fan-in, callbacks |
-| [ojs-cron.md](ojs-cron.md) | **Cron / Periodic Jobs** -- Cron expressions, timezone handling, overlap policies |
-| [ojs-events.md](ojs-events.md) | **Event Vocabulary** -- Lifecycle events emitted by brokers and workers |
-| [ojs-middleware.md](ojs-middleware.md) | **Middleware Chains** -- Interceptor model for cross-cutting concerns |
+| [ojs-retry.md](spec/ojs-retry.md) | **Retry Policy** -- Backoff strategies, max attempts, dead-letter semantics |
+| [ojs-unique-jobs.md](spec/ojs-unique-jobs.md) | **Unique Jobs / Deduplication** -- Uniqueness keys, lock windows, conflict resolution |
+| [ojs-workflows.md](spec/ojs-workflows.md) | **Workflow Primitives** -- Chain, group, and batch composition, fan-out/fan-in |
+| [ojs-cron.md](spec/ojs-cron.md) | **Cron / Periodic Jobs** -- Cron expressions, timezone handling, overlap policies |
+| [ojs-events.md](spec/ojs-events.md) | **Event Vocabulary** -- Lifecycle events emitted by brokers and workers |
+| [ojs-middleware.md](spec/ojs-middleware.md) | **Middleware Chains** -- Interceptor model for cross-cutting concerns |
 
 ### Runtime
 
 | Document | Description |
 |----------|-------------|
-| [ojs-worker-protocol.md](ojs-worker-protocol.md) | **Worker Lifecycle** -- Registration, heartbeats, graceful shutdown, signal handling |
-| [ojs-conformance.md](ojs-conformance.md) | **Conformance Levels** -- Tiered compliance requirements for implementations |
+| [ojs-worker-protocol.md](spec/ojs-worker-protocol.md) | **Worker Lifecycle** -- Registration, heartbeats, graceful shutdown, signal handling |
+| [ojs-conformance.md](spec/ojs-conformance.md) | **Conformance Levels** -- Tiered compliance requirements for implementations |
+
+### Official Extensions
+
+| Document | Description |
+|----------|-------------|
+| [ojs-admin-api.md](spec/ojs-admin-api.md) | **Admin and Operator API** -- Queue management, job inspection, bulk operations, worker management |
+| [ojs-observability.md](spec/ojs-observability.md) | **Observability** -- OpenTelemetry trace context, span conventions, metrics |
+| [ojs-priority.md](spec/ojs-priority.md) | **Job Priority** -- Integer priority levels, strict/weighted queue consumption, dynamic adjustment |
+| [ojs-fair-scheduling.md](spec/ojs-fair-scheduling.md) | **Fair Scheduling** -- Competing consumers, worker pools, weighted fair queuing, starvation prevention |
+| [ojs-bulk-operations.md](spec/ojs-bulk-operations.md) | **Bulk Operations** -- Batch enqueue/cancel/retry/delete, atomicity modes, partial failure semantics |
+| [ojs-progress.md](spec/ojs-progress.md) | **Job Progress** -- Numeric and structured progress reporting, checkpoint resumption, SSE streaming |
+| [ojs-backpressure.md](spec/ojs-backpressure.md) | **Backpressure** -- Reject, block, and drop-oldest strategies for queue bounds |
+| [ojs-dead-letter.md](spec/ojs-dead-letter.md) | **Dead Letter Queue** -- Retention, manual retry, automatic replay, pruning |
+| [ojs-graceful-shutdown.md](spec/ojs-graceful-shutdown.md) | **Graceful Shutdown** -- Signal handling, drain semantics, container integration |
+| [ojs-rate-limiting.md](spec/ojs-rate-limiting.md) | **Rate Limiting** -- Concurrency limits, window-based limiting, throttling |
+| [ojs-testing.md](spec/ojs-testing.md) | **Testing** -- Fake, inline, and real modes, assertion helpers, test utilities |
+| [ojs-extension-lifecycle.md](spec/ojs-extension-lifecycle.md) | **Extension Lifecycle** -- Core, official, and experimental tier system, promotion criteria |
+| [ojs-security.md](spec/ojs-security.md) | **Security Considerations** -- Threat model, transport security, authentication, authorization, input validation |
+| [ojs-delivery-guarantees.md](spec/ojs-delivery-guarantees.md) | **Delivery Guarantees** -- At-least-once, exactly-once semantics, CAP theorem, idempotency patterns |
+| [ojs-payload-limits.md](spec/ojs-payload-limits.md) | **Payload Limits** -- Size constraints, external payload references, chunking, compression |
+| [ojs-disaster-recovery.md](spec/ojs-disaster-recovery.md) | **Disaster Recovery & HA** -- Durability guarantees, replication, failover, backup/restore |
+| [ojs-extension-interactions.md](spec/ojs-extension-interactions.md) | **Extension Interactions** -- Pairwise interaction matrix, middleware ordering, conflict resolution |
+| [ojs-cloudevents-interop.md](spec/ojs-cloudevents-interop.md) | **CloudEvents Interoperability** -- Bidirectional conversion, event bridge, job triggers |
+| [ojs-errors.md](spec/ojs-errors.md) | **Error Catalog** -- Canonical error codes, structured error format, HTTP/gRPC/AMQP mapping |
+| [ojs-timeouts.md](spec/ojs-timeouts.md) | **Job Timeouts** -- Execution, total, and enqueue TTL timeouts, grace periods, heartbeat-based stall detection |
+| [ojs-results.md](spec/ojs-results.md) | **Job Results** -- Result storage, retention, size limits, retrieval patterns, external result references |
+| [ojs-webhooks.md](spec/ojs-webhooks.md) | **Webhook Delivery** -- Push-based event delivery, subscription management, HMAC signing, retry policies |
+| [ojs-logging.md](spec/ojs-logging.md) | **Structured Logging** -- JSON log format, severity levels, job correlation, sampling, sensitive data handling |
+| [ojs-queue-config.md](spec/ojs-queue-config.md) | **Queue Configuration** -- Queue lifecycle, capacity limits, DLQ routing, retention policies, default policies |
+
+### Experimental Extensions
+
+> ⚠️ **Note**: Experimental extensions (v0.1.0) may change in breaking ways. See [ojs-extension-lifecycle.md](spec/ojs-extension-lifecycle.md) for stability guarantees.
+
+| Document | Description |
+|----------|-------------|
+| [ojs-encryption.md](spec/ojs-encryption.md) | **Encryption and Codecs** -- Payload encryption, compression, codec chaining |
+| [ojs-framework-adapters.md](spec/ojs-framework-adapters.md) | **Framework Adapters** -- Transactional enqueue, outbox pattern |
+| [ojs-job-versioning.md](spec/ojs-job-versioning.md) | **Job Versioning** -- Schema evolution, version routing, canary deployments |
+| [ojs-multi-tenancy.md](spec/ojs-multi-tenancy.md) | **Multi-Tenancy** -- Tenant isolation, fairness scheduling, resource limits |
+
+### Guides & Reference
+
+| Document | Description |
+|----------|-------------|
+| [ojs-glossary.md](spec/ojs-glossary.md) | **Unified Glossary** -- Canonical definitions for all terms used across the specification |
+| [ojs-sdk-guidelines.md](spec/ojs-sdk-guidelines.md) | **SDK Design Guidelines** -- Naming conventions, async patterns, error handling, language-specific guidance |
+| [ojs-migration.md](spec/ojs-migration.md) | **Migration Guide** -- Attribute mapping and migration paths from Sidekiq, BullMQ, Celery, Faktory, Temporal, River |
+
+### Machine-Readable Schemas
+
+The specification is accompanied by machine-readable schema definitions maintained in sibling repositories:
+
+| Repository | Description |
+|------------|-------------|
+| **[ojs-json-schema](../ojs-json-schema)** | JSON Schema definitions for job envelopes, policies, and all extension data structures |
+| **[ojs-proto](../ojs-proto)** | Protocol Buffers definitions for the gRPC binding and binary wire format |
+
+These repositories ensure naming consistency across protocols and provide the foundation for code generation, validation tooling, and IDE autocomplete in any language.
 
 ## Hello World
 
@@ -113,7 +174,7 @@ Implementations declare which conformance level they support. Each level is a st
 | **Level 3** | **Orchestration** | Level 2 + unique jobs, workflow primitives (DAGs, fan-out/fan-in). |
 | **Level 4** | **Full** | Level 3 + event vocabulary, middleware chains, worker lifecycle protocol. |
 
-See [ojs-conformance.md](ojs-conformance.md) for the full test matrix and certification process.
+See [ojs-conformance.md](spec/ojs-conformance.md) for the full test matrix and certification process.
 
 ## Reference Implementations
 
