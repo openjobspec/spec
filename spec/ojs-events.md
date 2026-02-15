@@ -754,7 +754,7 @@ The following table summarizes which events MUST, SHOULD, or MAY be emitted at e
 | `job.started` | MUST | Operators need to know when processing begins. |
 | `job.completed` | MUST | The fundamental success signal. |
 | `job.failed` | MUST | The fundamental failure signal. |
-| `job.discarded` | MUST | Operators must know when jobs reach a terminal failure state. |
+| `job.discarded` | MUST | Operators MUST know when jobs reach a terminal failure state. |
 | `worker.started` | SHOULD | Useful for monitoring but not meaningful in all deployment models. |
 | `worker.stopped` | SHOULD | Useful for monitoring but not meaningful in all deployment models. |
 | `worker.heartbeat` | SHOULD | Useful for liveness detection. |

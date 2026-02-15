@@ -157,7 +157,7 @@ Actual enqueue operation (job inserted into queue)
 ```
 
 **Rationale**: Linear, predictable ordering is essential for middleware that has
-dependencies. For example, a validation middleware must run before a deduplication
+dependencies. For example, a validation middleware MUST run before a deduplication
 middleware (there is no point checking for duplicates if the job is invalid). Insertion
 order provides the simplest mental model and matches Sidekiq's proven approach.
 
@@ -195,7 +195,7 @@ Specification, including all REQUIRED fields (`specversion`, `id`, `type`, `queu
 and any OPTIONAL fields (`meta`, `priority`, `timeout`, `scheduled_at`, `expires_at`,
 `retry`, `unique`, `visibility_timeout`) that were set by the client.
 
-**Rationale**: Middleware must have full visibility into the job to make informed decisions.
+**Rationale**: Middleware MUST have full visibility into the job to make informed decisions.
 A rate-limiting middleware needs to see the `type` and `queue`. A validation middleware
 needs to inspect `args`. A metadata-injection middleware needs to modify `meta`.
 
@@ -816,7 +816,7 @@ When a batch of jobs is enqueued (see OJS JSON Wire Format, Section 10), enqueue
 middleware MUST execute independently for each job in the batch.
 
 **Rationale**: Each job in a batch may have different types, arguments, and metadata.
-Middleware must evaluate each job individually. A validation middleware might approve 9
+Middleware MUST evaluate each job individually. A validation middleware might approve 9
 out of 10 jobs in a batch.
 
 ### 9.2 Batch Middleware Failures

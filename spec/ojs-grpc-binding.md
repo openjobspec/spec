@@ -1831,7 +1831,7 @@ grpcurl -plaintext -d '{
 }' localhost:9090 ojs.v1.OJSService/StreamJobs
 ```
 
-Jobs are pushed to the client as they become available. Each job must be acknowledged via a separate `Ack` or `Nack` call.
+Jobs are pushed to the client as they become available. Each job MUST be acknowledged via a separate `Ack` or `Nack` call.
 
 ### 14.11 Queue Statistics
 

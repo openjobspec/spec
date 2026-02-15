@@ -146,7 +146,7 @@ Determines what happens when `max_attempts` is reached without success, or when 
 
 Implementations MUST support both values.
 
-**Rationale for MUST**: These two exhaustion behaviors represent fundamentally different operational philosophies. Some jobs (analytics events, non-critical notifications) are acceptable to lose; others (payment processing, order fulfillment) must be preserved for human review. The implementation must support both to serve both use cases.
+**Rationale for MUST**: These two exhaustion behaviors represent fundamentally different operational philosophies. Some jobs (analytics events, non-critical notifications) are acceptable to lose; others (payment processing, order fulfillment) MUST be preserved for human review. The implementation MUST support both to serve both use cases.
 
 **Rationale for `"discard"` as default**: Most background jobs are fire-and-forget operations where accumulating dead letters creates operational noise without value. Teams that need dead letter behavior opt into it explicitly. This matches Sidekiq's default behavior where jobs go to the dead set, but OJS defaults to discard because an explicit opt-in to dead letter is clearer than an implicit accumulation of failed jobs.
 
@@ -435,7 +435,7 @@ Handler response codes take precedence over the retry policy:
 
 Implementations MUST respect handler response codes when provided.
 
-**Rationale for MUST**: The handler has the most context about whether a failure is retryable. A payment handler that receives a "card stolen" response from the payment processor knows definitively that retrying is futile. The handler must be able to communicate this to the runtime.
+**Rationale for MUST**: The handler has the most context about whether a failure is retryable. A payment handler that receives a "card stolen" response from the payment processor knows definitively that retrying is futile. The handler MUST be able to communicate this to the runtime.
 
 ### 7.3 Error Response Format
 
@@ -965,6 +965,12 @@ The following table summarizes all MUST-level requirements in this specification
 | RET-18 | Implementations MUST support exact matching for `non_retryable_errors`.                          | 6.2     |
 | RET-19 | Implementations MUST reject invalid ISO 8601 duration strings.                                   | 4.2     |
 | RET-20 | Implementations MUST validate retry policies against the schema (or equivalent constraints).     | 14      |
+
+---
+
+## 16. Relationship to Dead Letter Queue
+
+When a job exhausts all retry attempts, it transitions to the `discarded` state (if `on_exhaustion` is `"discard"`) or is moved to a dead letter queue (if `on_exhaustion` is `"dead_letter"`). Dead letter queue handling, retention policies, replay mechanisms, and pruning are defined in [ojs-dead-letter.md](./ojs-dead-letter.md).
 
 ---
 
