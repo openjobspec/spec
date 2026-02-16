@@ -319,7 +319,7 @@ Emitted when a handler fails on a given attempt. This event is emitted per-attem
   "attempt": 1,
   "error": {
     "code": "handler_error",
-    "message": "SMTP connection refused: connect ECONNREFUSED 10.0.0.5:587",
+    "message": "SMTP connection refused: connect ECONNREFUSED 198.51.100.5:587",
     "retryable": true,
     "stack_trace": "Error: SMTP connection refused\n    at SMTPClient.connect (smtp.js:42)\n    at sendEmail (handler.js:15)"
   },
@@ -347,7 +347,7 @@ Emitted when a job has exhausted all retry attempts and is moved to the dead let
   "total_attempts": 5,
   "last_error": {
     "code": "handler_error",
-    "message": "SMTP connection refused: connect ECONNREFUSED 10.0.0.5:587"
+    "message": "SMTP connection refused: connect ECONNREFUSED 198.51.100.5:587"
   }
 }
 ```
@@ -1247,7 +1247,7 @@ A job fails twice, is retried, then exhausts retries and is discarded to the dea
     "attempt": 1,
     "error": {
       "code": "handler_error",
-      "message": "Payment gateway timeout: 10.0.1.50:443",
+      "message": "Payment gateway timeout: 198.51.100.50:443",
       "retryable": true
     },
     "duration_ms": 700
@@ -1273,7 +1273,7 @@ A job fails twice, is retried, then exhausts retries and is discarded to the dea
     "next_retry_at": "2025-06-01T11:00:03.210Z",
     "error": {
       "code": "handler_error",
-      "message": "Payment gateway timeout: 10.0.1.50:443"
+      "message": "Payment gateway timeout: 198.51.100.50:443"
     }
   }
 }
@@ -1314,7 +1314,7 @@ A job fails twice, is retried, then exhausts retries and is discarded to the dea
     "attempt": 2,
     "error": {
       "code": "handler_error",
-      "message": "Payment gateway timeout: 10.0.1.50:443",
+      "message": "Payment gateway timeout: 198.51.100.50:443",
       "retryable": true
     },
     "duration_ms": 800
@@ -1340,7 +1340,7 @@ A job fails twice, is retried, then exhausts retries and is discarded to the dea
     "next_retry_at": "2025-06-01T11:00:08.110Z",
     "error": {
       "code": "handler_error",
-      "message": "Payment gateway timeout: 10.0.1.50:443"
+      "message": "Payment gateway timeout: 198.51.100.50:443"
     }
   }
 }
@@ -1381,7 +1381,7 @@ A job fails twice, is retried, then exhausts retries and is discarded to the dea
     "attempt": 3,
     "error": {
       "code": "handler_error",
-      "message": "Payment gateway timeout: 10.0.1.50:443",
+      "message": "Payment gateway timeout: 198.51.100.50:443",
       "retryable": true
     },
     "duration_ms": 800
@@ -1405,7 +1405,7 @@ A job fails twice, is retried, then exhausts retries and is discarded to the dea
     "total_attempts": 3,
     "last_error": {
       "code": "handler_error",
-      "message": "Payment gateway timeout: 10.0.1.50:443"
+      "message": "Payment gateway timeout: 198.51.100.50:443"
     }
   }
 }

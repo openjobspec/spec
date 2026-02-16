@@ -658,7 +658,7 @@ An audit log entry for an admin bulk-cancel operation:
   "timestamp": "2026-02-15T14:22:10.847Z",
   "event_type": "admin.bulk_cancel",
   "principal": "admin@example.com",
-  "source_ip": "10.0.1.50",
+  "source_ip": "198.51.100.50",
   "correlation_id": "req_m3n4o5p6",
   "outcome": "success",
   "detail": {
