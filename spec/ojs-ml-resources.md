@@ -7,6 +7,7 @@
 | Version     | 0.1.0                  |
 | Date        | 2026-02-16             |
 | Status      | Experimental           |
+| Maturity    | Experimental           |
 | Layer       | 1 (Core Extension)     |
 | Level       | Extension              |
 

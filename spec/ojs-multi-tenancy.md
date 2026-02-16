@@ -11,6 +11,7 @@
 | **Version** | 0.1.0                                                    |
 | **Date**    | 2026-02-13                                               |
 | **Status**  | Experimental                                             |
+| **Maturity** | Experimental                                             |
 | **Tier**    | Experimental Extension                                   |
 | **URI**     | `urn:ojs:ext:experimental:multi-tenancy`                 |
 | **Requires**| OJS Core Specification (Layer 1)                         |

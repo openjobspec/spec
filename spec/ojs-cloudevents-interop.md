@@ -6,6 +6,7 @@
 |-------------|-------------------------------------------------------------|
 | Version     | 1.0.0-rc.1                                                  |
 | Status      | Release Candidate 1                                         |
+| Maturity    | Experimental                                                |
 | Date        | 2026-02-15                                                  |
 | Layer       | Cross-cutting (Layers 1–3)                                  |
 | Depends On  | ojs-core.md, ojs-events.md, ojs-http-binding.md            |

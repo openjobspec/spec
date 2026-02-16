@@ -6,6 +6,7 @@
 | **Version** | 1.0.0-rc.1                                     |
 | **Date**    | 2026-02-15                                     |
 | **Status**  | Release Candidate 1                            |
+| **Maturity** | Experimental                                   |
 | **Tier**    | Official Extension                             |
 | **URI**     | `urn:ojs:ext:payload-limits`                   |
 | **Requires**| OJS Core Specification (Layer 1)               |

@@ -6,6 +6,7 @@
 | **Version** | 1.0.0-rc.1                                     |
 | **Date**    | 2026-02-15                                     |
 | **Status**  | Release Candidate 1                            |
+| **Maturity** | Experimental                                   |
 | **Tier**    | Core Specification                             |
 | **URI**     | `urn:ojs:spec:delivery-guarantees`             |
 | **Requires**| OJS Core Specification, OJS Worker Protocol    |
