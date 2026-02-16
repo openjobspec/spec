@@ -5,6 +5,7 @@
 | **Title**   | OJS Core Specification         |
 | **Version** | 1.0.0-rc.1                     |
 | **Status**  | Release Candidate              |
+| **Maturity** | Stable                         |
 | **Date**    | 2026-02-12                     |
 | **Layer**   | 1 -- Core (protocol-agnostic)  |
 | **URI**     | https://openjobspec.org/spec/v1/ojs-core |

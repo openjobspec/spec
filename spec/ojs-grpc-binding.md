@@ -3,6 +3,7 @@
 **Version:** 1.0.0-rc.1
 **Date:** 2025-02-12
 **Status:** Release Candidate
+**Maturity:** Stable
 
 ---
 

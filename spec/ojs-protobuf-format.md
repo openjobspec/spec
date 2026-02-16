@@ -7,6 +7,7 @@
 | **Version**  | 1.0.0-rc.1                         |
 | **Date**     | 2026-02-15                         |
 | **Status**   | Release Candidate                  |
+| **Maturity** | Stable                             |
 | **Layer**    | 2 (Wire Format Encoding)          |
 | **Requires** | OJS Core Specification (Layer 1)   |
 | **License**  | Apache 2.0                         |

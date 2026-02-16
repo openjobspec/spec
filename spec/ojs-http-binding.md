@@ -3,6 +3,7 @@
 **OJS v1.0.0-rc.1 | Layer 3: Protocol Binding**
 
 **Status:** Release Candidate 1
+**Maturity:** Stable
 **Date:** 2026-02-12
 **Spec Version:** 1.0.0-rc.1
 
