@@ -6,6 +6,7 @@
 | **Version** | 1.0.0-rc.1                                                          |
 | **Date**    | 2026-02-15                                                           |
 | **Status**  | Release Candidate 1                                                  |
+| **Maturity** | Informational                                                        |
 | **Layer**   | Meta (cross-cutting governance)                                      |
 | **URI**     | https://openjobspec.org/spec/v1/ojs-extension-interactions           |
 | **Requires**| OJS Core Specification (Layer 1), OJS Extension Lifecycle            |

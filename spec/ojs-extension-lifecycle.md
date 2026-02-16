@@ -5,6 +5,7 @@
 | **Title**   | OJS Extension Lifecycle                          |
 | **Version** | 1.0.0-rc.1                                       |
 | **Status**  | Release Candidate                                |
+| **Maturity** | Informational                                    |
 | **Date**    | 2026-02-13                                       |
 | **Layer**   | Meta (cross-cutting governance)                  |
 | **URI**     | https://openjobspec.org/spec/v1/ojs-extension-lifecycle |
