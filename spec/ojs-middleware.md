@@ -7,6 +7,7 @@
 | **Version**  | 1.0.0-rc.1                               |
 | **Date**     | 2025-06-01                               |
 | **Status**   | Release Candidate                        |
+| **Maturity** | Beta                                     |
 | **Layer**    | 1 (Core Specification)                   |
 | **Requires** | OJS Core Specification (Layer 1)         |
 | **License**  | Apache 2.0                               |

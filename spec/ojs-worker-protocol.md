@@ -7,6 +7,7 @@
 | **Version**  | 1.0.0-rc.1                               |
 | **Date**     | 2025-06-01                               |
 | **Status**   | Release Candidate                        |
+| **Maturity** | Beta                                     |
 | **Layer**    | 3 (Worker Protocol)                      |
 | **Requires** | OJS Core Specification (Layer 1), OJS JSON Wire Format (Layer 2) |
 | **License**  | Apache 2.0                               |

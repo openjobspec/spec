@@ -5,6 +5,7 @@
 | Version     | 1.0.0-rc.1           |
 | Date        | 2026-02-12           |
 | Status      | Release Candidate    |
+| Maturity    | Beta                 |
 | Layer       | 1 -- Core            |
 | Spec URI    | `urn:ojs:spec:retry` |
 
