@@ -5,7 +5,7 @@
 | Field        | Value                              |
 |--------------|------------------------------------|
 | **Version**  | 1.0.0-rc.1                         |
-| **Date**     | 2026-02-15                         |
+| **Date**     | 2026-02-19                         |
 | **Status**   | Release Candidate                  |
 | **Maturity** | Stable                             |
 | **Layer**    | 2 (Wire Format Encoding)          |
@@ -203,7 +203,7 @@ message JobError {
 
 | Proto Field | Field Number | Proto Type | Core Attribute | Notes |
 |-------------|-------------|------------|----------------|-------|
-| `specversion` | 1 | `string` | `specversion` | MUST be `"1.0.0-rc.1"`. |
+| `specversion` | 1 | `string` | `specversion` | MUST be `"1.0"`. |
 | `id` | 2 | `string` | `id` | UUIDv7 as string. |
 | `type` | 3 | `string` | `type` | Dot-namespaced job type. |
 | `queue` | 4 | `string` | `queue` | Default: `"default"`. |
@@ -431,7 +431,7 @@ The gRPC protocol binding (ojs-grpc-binding.md, Layer 3) naturally uses Protobuf
 
 ```protobuf
 # Proto text format (for documentation; wire format is binary)
-specversion: "1.0.0-rc.1"
+specversion: "1.0"
 id: "019539a4-b68c-7def-8000-1a2b3c4d5e6f"
 type: "email.send"
 queue: "default"
@@ -445,7 +445,7 @@ Equivalent JSON:
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "019539a4-b68c-7def-8000-1a2b3c4d5e6f",
   "type": "email.send",
   "queue": "default",
@@ -456,7 +456,7 @@ Equivalent JSON:
 ### 14.2 Job with Extensions (Protobuf Text Format)
 
 ```protobuf
-specversion: "1.0.0-rc.1"
+specversion: "1.0"
 id: "019539a4-b68c-7def-8000-2b3c4d5e6f7a"
 type: "video.transcode"
 queue: "media"

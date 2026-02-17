@@ -1549,7 +1549,7 @@ components:
         specversion:
           type: string
           description: OJS spec version supported
-          example: "1.0.0-rc.1"
+          example: "1.0"
         implementation:
           type: object
           properties:
