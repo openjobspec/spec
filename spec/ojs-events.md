@@ -7,7 +7,7 @@
 | Version     | 1.0.0-rc.1             |
 | Status      | Release Candidate      |
 | Maturity    | Beta                   |
-| Date        | 2025-06-01             |
+| Date        | 2026-02-19             |
 | Layer       | Core (Layer 1)         |
 | Depends On  | ojs-core.md            |
 

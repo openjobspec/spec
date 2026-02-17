@@ -1,7 +1,7 @@
 # OJS Workflow Primitives Specification
 
 **Version**: 1.0.0-rc.1
-**Date**: 2026-02-12
+**Date**: 2026-02-19
 **Status**: Release Candidate
 **Maturity**: Beta
 **Spec Layer**: Layer 1 (Core Specification)
