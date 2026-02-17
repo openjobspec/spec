@@ -4,7 +4,7 @@
 |-------------|------------------------------------------------|
 | **Title**   | OJS Delivery Guarantees Specification          |
 | **Version** | 1.0.0-rc.1                                     |
-| **Date**    | 2026-02-15                                     |
+| **Date**    | 2026-02-19                                     |
 | **Status**  | Release Candidate 1                            |
 | **Maturity** | Experimental                                   |
 | **Tier**    | Core Specification                             |

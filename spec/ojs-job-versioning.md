@@ -9,7 +9,7 @@
 |-------------|----------------------------------------------------------|
 | **Title**   | OJS Job Versioning Specification                         |
 | **Version** | 0.1.0                                                    |
-| **Date**    | 2026-02-13                                               |
+| **Date**    | 2026-02-19                                               |
 | **Status**  | Experimental                                             |
 | **Maturity** | Experimental                                             |
 | **Tier**    | Experimental Extension                                   |

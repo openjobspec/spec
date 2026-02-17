@@ -4,7 +4,7 @@
 |-------------|----------------------------------------|
 | **Title**   | OJS Error Catalog                      |
 | **Version** | 1.0.0-rc.1                             |
-| **Date**    | 2026-02-15                             |
+| **Date**    | 2026-02-19                             |
 | **Status**  | Release Candidate 1                    |
 | **Maturity** | Stable                                 |
 | **Layer**   | Cross-cutting (applies to all layers)  |

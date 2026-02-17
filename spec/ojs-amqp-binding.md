@@ -1,13 +1,13 @@
 # Open Job Spec -- Layer 3: AMQP 0-9-1 Protocol Binding
 
 **Version:** 1.0.0-rc.1
-**Date:** 2026-02-15
+**Date:** 2026-02-19
 **Status:** Release Candidate 1
 
 | Field        | Value                      |
 |--------------|----------------------------|
 | Spec Version | 1.0.0-rc.1                 |
-| Date         | 2026-02-15                 |
+| Date         | 2026-02-19                 |
 | Status       | Release Candidate 1        |
 | Maturity     | Experimental               |
 | Layer        | 3 -- Protocol Binding      |

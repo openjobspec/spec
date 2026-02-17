@@ -6,7 +6,7 @@
 | **Version** | 0.1.0                                       |
 | **Status**  | Experimental (Stage 0)                      |
 | **Maturity** | Experimental                                |
-| **Date**    | 2025-07-15                                  |
+| **Date**    | 2026-02-19                                  |
 | **Layer**   | 3 — Protocol Binding                        |
 | **Depends On** | ojs-core.md, ojs-events.md              |
 

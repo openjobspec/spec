@@ -4,7 +4,7 @@
 |-------------|------------------------------------------------|
 | **Title**   | OJS Backpressure Specification                 |
 | **Version** | 1.0.0-rc.1                                     |
-| **Date**    | 2026-02-13                                     |
+| **Date**    | 2026-02-19                                     |
 | **Status**  | Release Candidate                              |
 | **Maturity** | Experimental                                   |
 | **Tier**    | Official Extension                             |
