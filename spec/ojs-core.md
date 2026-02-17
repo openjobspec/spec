@@ -6,7 +6,7 @@
 | **Version** | 1.0.0-rc.1                     |
 | **Status**  | Release Candidate              |
 | **Maturity** | Stable                         |
-| **Date**    | 2026-02-12                     |
+| **Date**    | 2026-02-19                     |
 | **Layer**   | 1 -- Core (protocol-agnostic)  |
 | **URI**     | https://openjobspec.org/spec/v1/ojs-core |
 
@@ -198,7 +198,7 @@ Attributes are organized into three categories:
 
 - **Type**: `string`
 - **Description**: The version of the OJS Core Specification that the job envelope conforms to.
-- **Constraints**: MUST be a valid [Semantic Versioning 2.0.0](https://semver.org/) string. For this version of the specification, the value MUST be `"1.0.0-rc.1"`.
+- **Constraints**: MUST be a valid [Semantic Versioning 2.0.0](https://semver.org/) string. For this version of the specification, the value MUST be `"1.0"`.
 - **Rationale**: Including the spec version in every job envelope enables backward-compatible evolution of the specification. Implementations can use this field to determine which attributes and semantics apply. This pattern is borrowed from CloudEvents, where `specversion` is one of only four required attributes.
 
 #### `id`
@@ -388,7 +388,7 @@ System-managed attributes are set and maintained by the implementation. Clients 
 
 | Attribute | Type | Category | Required | Default | Description |
 |-----------|------|----------|----------|---------|-------------|
-| `specversion` | string | Required | Yes | -- | OJS spec version (`"1.0.0-rc.1"`) |
+| `specversion` | string | Required | Yes | -- | OJS spec version (`"1.0"`) |
 | `id` | string | Required | Yes | -- | UUIDv7 job identifier |
 | `type` | string | Required | Yes | -- | Dot-namespaced job type |
 | `queue` | string | Required | Yes | `"default"` | Target queue name |
@@ -913,7 +913,7 @@ The simplest possible valid job envelope, with only required attributes:
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "019461a8-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
   "type": "email.send",
   "queue": "default",
@@ -925,7 +925,7 @@ After enqueueing, the implementation returns the full envelope with system-manag
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "019461a8-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
   "type": "email.send",
   "queue": "default",
@@ -945,7 +945,7 @@ A job that uses every optional attribute:
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "019461a8-2b3c-7d4e-9f50-6a7b8c9d0e1f",
   "type": "report.generate",
   "queue": "reports",
@@ -984,7 +984,7 @@ After enqueueing (note: `scheduled_at` is in the future, so state is `scheduled`
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "019461a8-2b3c-7d4e-9f50-6a7b8c9d0e1f",
   "type": "report.generate",
   "queue": "reports",
@@ -1028,7 +1028,7 @@ A job that has been executed and completed:
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "019461a8-3c4d-7e5f-a061-7b8c9d0e1f2a",
   "type": "email.send",
   "queue": "email",
@@ -1058,7 +1058,7 @@ A job that failed on its second attempt and is waiting to retry:
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "019461a8-4d5e-7f60-b172-8c9d0e1f2a3b",
   "type": "data.sync",
   "queue": "default",
@@ -1096,7 +1096,7 @@ A job that exhausted all retry attempts:
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "019461a8-5e6f-7071-c283-9d0e1f2a3b4c",
   "type": "payment.process",
   "queue": "payments",
@@ -1134,7 +1134,7 @@ A job set to execute at a future time:
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "019461a8-6f70-7182-d394-0e1f2a3b4c5d",
   "type": "notification.send_digest",
   "queue": "notifications",
@@ -1151,7 +1151,7 @@ After enqueueing:
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "019461a8-6f70-7182-d394-0e1f2a3b4c5d",
   "type": "notification.send_digest",
   "queue": "notifications",
