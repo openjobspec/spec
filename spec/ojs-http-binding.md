@@ -4,7 +4,7 @@
 
 **Status:** Release Candidate 1
 **Maturity:** Stable
-**Date:** 2026-02-12
+**Date:** 2026-02-19
 **Spec Version:** 1.0.0-rc.1
 
 ---
@@ -77,6 +77,7 @@ The OJS HTTP binding maps each OJS logical operation to an HTTP method + URI pai
 | FAIL              | `POST`      | `/ojs/v1/workers/nack`        | Report job failure with error data   | 0     |
 | BEAT              | `POST`      | `/ojs/v1/workers/heartbeat`   | Worker heartbeat / extend visibility | 1     |
 | CANCEL            | `DELETE`    | `/ojs/v1/jobs/:id`            | Cancel a job                         | 1     |
+| ACTIVATE          | `POST`      | `/ojs/v1/jobs/:id/activate`   | Activate a pending job               | 1     |
 | INFO              | `GET`       | `/ojs/v1/jobs/:id`            | Get job details                      | 1     |
 
 **Rationale for POST on worker endpoints:** FETCH, ACK, FAIL, and BEAT are command operations that carry request bodies and produce side effects. POST is semantically correct for operations that are neither safe nor idempotent (FETCH modifies queue state) or that carry structured request bodies (ACK, FAIL, BEAT). Using POST uniformly for worker coordination simplifies client implementation and avoids overloading GET semantics.
@@ -122,7 +123,7 @@ The conformance manifest endpoint is the sole exception: it MUST be served at `/
 Clients MAY include an `OJS-Version` header to indicate the desired spec version:
 
 ```
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 ```
 
 Servers MUST include the `OJS-Version` header in all responses to indicate which spec version was used to process the request.
@@ -230,7 +231,7 @@ Every response MUST include the following headers:
 
 | Header           | Description                              | Example                              |
 |------------------|------------------------------------------|--------------------------------------|
-| `OJS-Version`    | Spec version used to process the request | `1.0.0-rc.1`                         |
+| `OJS-Version`    | Spec version used to process the request | `1.0`                         |
 | `Content-Type`   | Response content type                    | `application/openjobspec+json`       |
 | `X-Request-Id`   | Unique request identifier                | `req_019414d4-8b2e-7c3a-b5d1-aaa111` |
 
@@ -250,7 +251,7 @@ The PUSH operation submits a job for processing.
 - **Path:** `/ojs/v1/jobs`
 - **Success Status:** `201 Created`
 
-The server MUST assign a UUIDv7 `id` to the job if the client does not provide one. The server MUST set `state` to `available` (or `scheduled` if `scheduled_at` is in the future). The server MUST set the `enqueued_at` timestamp.
+The server MUST assign a UUIDv7 `id` to the job if the client does not provide one. The server MUST set `state` to `available` (or `scheduled` if `scheduled_at` is in the future, or `pending` if the `pending` flag is set in the request). The server MUST set the `enqueued_at` timestamp.
 
 **Rationale for 201:** The operation creates a new resource (a job). HTTP semantics require `201 Created` for successful resource creation.
 
@@ -326,7 +327,19 @@ The server MUST transition the job to `cancelled` if it is in a non-terminal sta
 
 **Rationale for DELETE:** Cancellation semantically removes the job from the processing pipeline. DELETE aligns with the intent of "this job should no longer be processed."
 
-### 7.8 INFO (Get Job Details)
+### 7.8 ACTIVATE
+
+The ACTIVATE operation transitions a pending job to the available state, making it eligible for worker processing.
+
+- **HTTP Method:** `POST`
+- **Path:** `/ojs/v1/jobs/:id/activate`
+- **Success Status:** `200 OK`
+
+The server MUST transition the job from `pending` to `available`. If the job is not in the `pending` state, the server MUST respond with `409 Conflict`. If the job does not exist, the server MUST respond with `404 Not Found`.
+
+**Rationale for POST:** ACTIVATE is a command operation that modifies server state (transitions a job from `pending` to `available`). POST is semantically correct for operations that produce side effects and are not idempotent. A dedicated `/activate` sub-resource clearly communicates the intent, following the same pattern as other action endpoints (e.g., `/pause`, `/resume`).
+
+### 7.9 INFO (Get Job Details)
 
 The INFO operation retrieves the current state and metadata of a job.
 
@@ -364,12 +377,12 @@ curl -s https://jobs.example.com/ojs/v1/health \
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0001-7000-a000-000000000001
 
 {
   "status": "ok",
-  "version": "1.0.0-rc.1",
+  "version": "1.0",
   "uptime_seconds": 86400,
   "backend": {
     "type": "redis",
@@ -384,12 +397,12 @@ X-Request-Id: req_019414d4-0001-7000-a000-000000000001
 ```http
 HTTP/1.1 503 Service Unavailable
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0001-7000-a000-000000000002
 
 {
   "status": "degraded",
-  "version": "1.0.0-rc.1",
+  "version": "1.0",
   "uptime_seconds": 86400,
   "backend": {
     "type": "redis",
@@ -465,13 +478,14 @@ curl -s -X POST https://jobs.example.com/ojs/v1/jobs \
 | `unique`            | object   | `null`      | Unique job / deduplication policy (Level 4).                 |
 | `tags`              | string[] | `[]`        | Tags for filtering and observability.                        |
 | `visibility_timeout_ms` | integer | `30000` | Reservation period before job is reclaimed on worker crash.  |
+| `pending`           | boolean  | `false`     | If `true`, the job enters the `pending` state instead of `available`. The job will not be available to workers until explicitly activated via the ACTIVATE operation (`POST /ojs/v1/jobs/:id/activate`). This supports patterns where jobs must be confirmed, approved, or staged before execution. |
 
 #### Response -- Success (`201 Created`)
 
 ```http
 HTTP/1.1 201 Created
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0002-7000-a000-000000000001
 Location: /ojs/v1/jobs/019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6
 
@@ -505,7 +519,7 @@ The server MUST include a `Location` header pointing to the newly created job re
 ```http
 HTTP/1.1 400 Bad Request
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0002-7000-a000-000000000002
 
 {
@@ -530,7 +544,7 @@ When the job's unique policy has `on_conflict: "reject"` and a duplicate exists:
 ```http
 HTTP/1.1 409 Conflict
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0002-7000-a000-000000000003
 
 {
@@ -598,7 +612,7 @@ curl -s -X POST https://jobs.example.com/ojs/v1/jobs/batch \
 ```http
 HTTP/1.1 201 Created
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0003-7000-a000-000000000001
 
 {
@@ -639,7 +653,7 @@ If any job in the batch fails validation, the entire batch is rejected:
 ```http
 HTTP/1.1 400 Bad Request
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0003-7000-a000-000000000002
 
 {
@@ -677,7 +691,7 @@ curl -s https://jobs.example.com/ojs/v1/jobs/019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0004-7000-a000-000000000001
 
 {
@@ -712,7 +726,7 @@ X-Request-Id: req_019414d4-0004-7000-a000-000000000001
 ```http
 HTTP/1.1 404 Not Found
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0004-7000-a000-000000000002
 
 {
@@ -749,7 +763,7 @@ curl -s -X DELETE https://jobs.example.com/ojs/v1/jobs/019414d4-8b2e-7c3a-b5d1-f
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0005-7000-a000-000000000001
 
 {
@@ -770,7 +784,7 @@ When the job is already in a terminal state:
 ```http
 HTTP/1.1 409 Conflict
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0005-7000-a000-000000000002
 
 {
@@ -783,6 +797,89 @@ X-Request-Id: req_019414d4-0005-7000-a000-000000000002
       "current_state": "completed"
     },
     "request_id": "req_019414d4-0005-7000-a000-000000000002"
+  }
+}
+```
+
+---
+
+### 9.5 Activate a Job -- ACTIVATE
+
+**`POST /ojs/v1/jobs/:id/activate`**
+
+Activates a pending job, transitioning it from `pending` to `available` so that it becomes eligible for worker processing. This is a Level 1 capability.
+
+Jobs enter the `pending` state when enqueued with the `"pending": true` option. Pending jobs are staged and will not be made available to workers until explicitly activated via this endpoint. This supports patterns where jobs must be confirmed, approved, or staged before execution (inspired by River's `pending` state for staged job activation).
+
+#### Request
+
+```bash
+curl -s -X POST https://jobs.example.com/ojs/v1/jobs/019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6/activate \
+  -H "Content-Type: application/openjobspec+json" \
+  -H "Accept: application/openjobspec+json"
+```
+
+#### Response -- Success (`200 OK`)
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/openjobspec+json
+OJS-Version: 1.0
+X-Request-Id: req_019414d4-0006-7000-a000-000000000001
+
+{
+  "job": {
+    "id": "019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6",
+    "type": "email.send",
+    "state": "available",
+    "activated_at": "2026-02-12T10:31:00.000Z",
+    "previous_state": "pending"
+  }
+}
+```
+
+#### Response -- Not Found (`404 Not Found`)
+
+```http
+HTTP/1.1 404 Not Found
+Content-Type: application/openjobspec+json
+OJS-Version: 1.0
+X-Request-Id: req_019414d4-0006-7000-a000-000000000002
+
+{
+  "error": {
+    "code": "not_found",
+    "message": "Job '019414d4-0000-0000-0000-000000000000' not found.",
+    "retryable": false,
+    "details": {
+      "resource_type": "job",
+      "resource_id": "019414d4-0000-0000-0000-000000000000"
+    },
+    "request_id": "req_019414d4-0006-7000-a000-000000000002"
+  }
+}
+```
+
+#### Response -- Conflict (`409 Conflict`)
+
+When the job is not in the `pending` state:
+
+```http
+HTTP/1.1 409 Conflict
+Content-Type: application/openjobspec+json
+OJS-Version: 1.0
+X-Request-Id: req_019414d4-0006-7000-a000-000000000003
+
+{
+  "error": {
+    "code": "invalid_request",
+    "message": "Cannot activate job in state 'available'. Only jobs in 'pending' state can be activated.",
+    "retryable": false,
+    "details": {
+      "job_id": "019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6",
+      "current_state": "available"
+    },
+    "request_id": "req_019414d4-0006-7000-a000-000000000003"
   }
 }
 ```
@@ -831,7 +928,7 @@ curl -s -X POST https://jobs.example.com/ojs/v1/workers/fetch \
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0006-7000-a000-000000000001
 
 {
@@ -865,7 +962,7 @@ An empty `jobs` array indicates no work is currently available. This is not an e
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0006-7000-a000-000000000002
 
 {
@@ -910,7 +1007,7 @@ curl -s -X POST https://jobs.example.com/ojs/v1/workers/ack \
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0007-7000-a000-000000000001
 
 {
@@ -928,7 +1025,7 @@ When the job is not in the `active` state (e.g., already completed or timed out)
 ```http
 HTTP/1.1 409 Conflict
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0007-7000-a000-000000000002
 
 {
@@ -991,7 +1088,7 @@ curl -s -X POST https://jobs.example.com/ojs/v1/workers/nack \
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0008-7000-a000-000000000001
 
 {
@@ -1008,7 +1105,7 @@ X-Request-Id: req_019414d4-0008-7000-a000-000000000001
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0008-7000-a000-000000000002
 
 {
@@ -1056,7 +1153,7 @@ curl -s -X POST https://jobs.example.com/ojs/v1/workers/heartbeat \
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0009-7000-a000-000000000001
 
 {
@@ -1075,7 +1172,7 @@ The server instructs the worker to stop fetching new jobs and finish active ones
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0009-7000-a000-000000000002
 
 {
@@ -1094,7 +1191,7 @@ The server instructs the worker to shut down immediately:
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0009-7000-a000-000000000003
 
 {
@@ -1134,7 +1231,7 @@ curl -s https://jobs.example.com/ojs/v1/queues \
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0010-7000-a000-000000000001
 
 {
@@ -1184,7 +1281,7 @@ curl -s https://jobs.example.com/ojs/v1/queues/email/stats \
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0011-7000-a000-000000000001
 
 {
@@ -1227,7 +1324,7 @@ curl -s -X POST https://jobs.example.com/ojs/v1/queues/email/pause \
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0012-7000-a000-000000000001
 
 {
@@ -1244,7 +1341,7 @@ When a client attempts to enqueue a job to a paused queue:
 ```http
 HTTP/1.1 422 Unprocessable Entity
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0012-7000-a000-000000000002
 
 {
@@ -1282,7 +1379,7 @@ curl -s -X POST https://jobs.example.com/ojs/v1/queues/email/resume \
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0013-7000-a000-000000000001
 
 {
@@ -1324,7 +1421,7 @@ curl -s "https://jobs.example.com/ojs/v1/dead-letter?queue=email&limit=10&offset
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0014-7000-a000-000000000001
 
 {
@@ -1376,7 +1473,7 @@ curl -s -X POST https://jobs.example.com/ojs/v1/dead-letter/019414d4-cccc-7000-d
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0015-7000-a000-000000000001
 
 {
@@ -1412,7 +1509,7 @@ curl -s -X DELETE https://jobs.example.com/ojs/v1/dead-letter/019414d4-cccc-7000
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0016-7000-a000-000000000001
 
 {
@@ -1426,7 +1523,7 @@ X-Request-Id: req_019414d4-0016-7000-a000-000000000001
 ```http
 HTTP/1.1 404 Not Found
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0016-7000-a000-000000000002
 
 {
@@ -1467,7 +1564,7 @@ curl -s "https://jobs.example.com/ojs/v1/cron?limit=50&offset=0" \
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0017-7000-a000-000000000001
 
 {
@@ -1568,7 +1665,7 @@ curl -s -X POST https://jobs.example.com/ojs/v1/cron \
 ```http
 HTTP/1.1 201 Created
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0018-7000-a000-000000000001
 
 {
@@ -1609,7 +1706,7 @@ curl -s -X DELETE https://jobs.example.com/ojs/v1/cron/daily-report \
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0019-7000-a000-000000000001
 
 {
@@ -1684,7 +1781,7 @@ curl -s -X POST https://jobs.example.com/ojs/v1/workflows \
 ```http
 HTTP/1.1 201 Created
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0020-7000-a000-000000000001
 Location: /ojs/v1/workflows/019414d4-dddd-7000-e000-000000000001
 
@@ -1741,7 +1838,7 @@ curl -s https://jobs.example.com/ojs/v1/workflows/019414d4-dddd-7000-e000-000000
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0021-7000-a000-000000000001
 
 {
@@ -1803,7 +1900,7 @@ curl -s -X DELETE https://jobs.example.com/ojs/v1/workflows/019414d4-dddd-7000-e
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0022-7000-a000-000000000001
 
 {
@@ -1842,7 +1939,7 @@ curl -s "https://jobs.example.com/ojs/v1/schemas?limit=50&offset=0" \
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0023-7000-a000-000000000001
 
 {
@@ -1920,7 +2017,7 @@ curl -s -X POST https://jobs.example.com/ojs/v1/schemas \
 ```http
 HTTP/1.1 201 Created
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0024-7000-a000-000000000001
 
 {
@@ -1940,7 +2037,7 @@ When the submitted schema itself is invalid:
 ```http
 HTTP/1.1 400 Bad Request
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0024-7000-a000-000000000002
 
 {
@@ -1976,7 +2073,7 @@ curl -s "https://jobs.example.com/ojs/v1/schemas/urn%3Aojs%3Aschema%3Aemail.send
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0025-7000-a000-000000000001
 
 {
@@ -2034,7 +2131,7 @@ curl -s -X DELETE "https://jobs.example.com/ojs/v1/schemas/urn%3Aojs%3Aschema%3A
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0026-7000-a000-000000000001
 
 {
@@ -2175,7 +2272,7 @@ curl -s "https://jobs.example.com/ojs/v1/dead-letter?queue=email&limit=10&offset
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0027-7000-a000-000000000001
 
 {
@@ -2225,7 +2322,7 @@ When a client exceeds the rate limit, the server MUST respond with `429 Too Many
 ```http
 HTTP/1.1 429 Too Many Requests
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0028-7000-a000-000000000001
 X-RateLimit-Limit: 1000
 X-RateLimit-Remaining: 0
@@ -2256,7 +2353,7 @@ The server MUST include a `Retry-After` header (in seconds) as specified by RFC 
 ```http
 HTTP/1.1 201 Created
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0029-7000-a000-000000000001
 X-RateLimit-Limit: 1000
 X-RateLimit-Remaining: 997
@@ -2318,7 +2415,7 @@ curl -s -X POST https://jobs.example.com/ojs/v1/jobs \
 ```http
 HTTP/1.1 201 Created
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_client-019414d4-ffff-7000-a000-123456789abc
 Location: /ojs/v1/jobs/019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6
 
@@ -2391,11 +2488,11 @@ curl -s https://jobs.example.com/ojs/manifest \
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/openjobspec+json
-OJS-Version: 1.0.0-rc.1
+OJS-Version: 1.0
 X-Request-Id: req_019414d4-0030-7000-a000-000000000001
 
 {
-  "ojs_version": "1.0.0-rc.1",
+  "ojs_version": "1.0",
   "implementation": {
     "name": "ojs-redis",
     "version": "1.0.0",
@@ -2460,6 +2557,7 @@ The `protocols` array MUST include `"http"` since HTTP is the required baseline 
 | `POST`   | `/ojs/v1/jobs/batch`              | PUSH (batch)    | 4     | `201`          |
 | `GET`    | `/ojs/v1/jobs/:id`                | INFO            | 1     | `200`          |
 | `DELETE` | `/ojs/v1/jobs/:id`                | CANCEL          | 1     | `200`          |
+| `POST`   | `/ojs/v1/jobs/:id/activate`       | ACTIVATE        | 1     | `200`          |
 | `POST`   | `/ojs/v1/workers/fetch`           | FETCH           | 0     | `200`          |
 | `POST`   | `/ojs/v1/workers/ack`             | ACK             | 0     | `200`          |
 | `POST`   | `/ojs/v1/workers/nack`            | FAIL            | 0     | `200`          |
@@ -2517,7 +2615,7 @@ curl -s https://jobs.example.com/ojs/v1/health \
 ```json
 {
   "status": "ok",
-  "version": "1.0.0-rc.1",
+  "version": "1.0",
   "uptime_seconds": 3600,
   "backend": {
     "type": "redis",
