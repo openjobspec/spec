@@ -1,7 +1,7 @@
 # Open Job Spec -- Layer 3: gRPC Protocol Binding
 
 **Version:** 1.0.0-rc.1
-**Date:** 2025-02-12
+**Date:** 2026-02-19
 **Status:** Release Candidate
 **Maturity:** Stable
 
@@ -119,6 +119,7 @@ The following table maps each OJS logical operation (defined in `ojs-core.md`) t
 | FAIL | `Nack` | `NackRequest` | `NackResponse` | Unary |
 | BEAT | `Heartbeat` | `HeartbeatRequest` | `HeartbeatResponse` | Unary |
 | CANCEL | `CancelJob` | `CancelJobRequest` | `CancelJobResponse` | Unary |
+| ACTIVATE | `ActivateJob` | `ActivateJobRequest` | `ActivateJobResponse` | Unary |
 | INFO | `GetJob` | `GetJobRequest` | `GetJobResponse` | Unary |
 
 ### 4.1 Additional RPCs
@@ -192,6 +193,12 @@ service OJSService {
   // Maps to the CANCEL logical operation.
   // Conformance level: 1 (Reliable).
   rpc CancelJob(CancelJobRequest) returns (CancelJobResponse);
+
+  // Activates a job that is in the pending state, transitioning it
+  // to the available state so it can be fetched by workers.
+  // Maps to the ACTIVATE logical operation.
+  // Conformance level: 1 (Reliable).
+  rpc ActivateJob(ActivateJobRequest) returns (ActivateJobResponse);
 
   // ---- Workers ----
 
@@ -522,7 +529,7 @@ message Event {
 message ManifestRequest {}
 
 message ManifestResponse {
-  // OJS specification version (e.g., "1.0.0-rc.1").
+  // OJS specification version (e.g., "1.0").
   string ojs_version = 1;
 
   // Implementation-specific information.
@@ -630,6 +637,12 @@ message EnqueueOptions {
 
   // Visibility timeout / reservation period for workers.
   google.protobuf.Duration visibility_timeout = 12;
+
+  // If true, the job enters the `pending` state instead of `available`,
+  // requiring an explicit ActivateJob call before it can be fetched by
+  // workers. This supports patterns where jobs must be confirmed or
+  // approved before execution.
+  bool pending = 13;
 }
 
 message EnqueueResponse {
@@ -705,6 +718,18 @@ message CancelJobRequest {
 
 message CancelJobResponse {
   // The job after cancellation, with state set to CANCELLED.
+  Job job = 1;
+}
+
+// ---- ActivateJob ----
+
+message ActivateJobRequest {
+  // Required. The UUIDv7 job identifier.
+  string job_id = 1;
+}
+
+message ActivateJobResponse {
+  // The job after activation, with state set to AVAILABLE.
   Job job = 1;
 }
 ```
@@ -1213,7 +1238,7 @@ Implementations MUST map OJS error conditions to gRPC status codes as defined in
 | `INVALID_ARGUMENT` (3) | `invalid_payload`, `invalid_request`, `schema_validation` | The request contains invalid data: malformed fields, missing required fields, or payload that fails schema validation. |
 | `NOT_FOUND` (5) | `not_found` | The referenced job, queue, workflow, or cron schedule does not exist. |
 | `ALREADY_EXISTS` (6) | `duplicate` | A unique job constraint was violated and the conflict action is `reject`. |
-| `FAILED_PRECONDITION` (9) | `queue_paused`, `unsupported` | The operation cannot be performed in the current system state. A queue is paused and the operation requires it to be active, or the operation requires a conformance level the server does not support. |
+| `FAILED_PRECONDITION` (9) | `queue_paused`, `invalid_state`, `unsupported` | The operation cannot be performed in the current system state. A queue is paused and the operation requires it to be active, a job is not in the required state for the requested transition (e.g., activating a job that is not in `pending` state), or the operation requires a conformance level the server does not support. |
 | `RESOURCE_EXHAUSTED` (8) | `rate_limited` | A rate limit has been exceeded. The client SHOULD retry after the duration indicated in the `retry-after` metadata key (see Section 9). |
 | `INTERNAL` (13) | `backend_error` | An internal error occurred in the OJS server or its backend storage. |
 | `UNAVAILABLE` (14) | _(backend unavailable)_ | The backend storage is temporarily unreachable. The client SHOULD retry with exponential backoff. |
@@ -1541,7 +1566,7 @@ An implementation that supports both HTTP and gRPC MUST declare both protocols i
 
 ```json
 {
-  "ojs_version": "1.0.0-rc.1",
+  "ojs_version": "1.0",
   "protocols": ["http", "grpc"],
   ...
 }
@@ -1606,7 +1631,7 @@ Response:
 
 ```json
 {
-  "ojsVersion": "1.0.0-rc.1",
+  "ojsVersion": "1.0",
   "implementation": {
     "name": "ojs-backend-redis",
     "version": "1.0.0",
@@ -1794,7 +1819,71 @@ grpcurl -plaintext -d '{
 }' localhost:9090 ojs.v1.OJSService/GetJob
 ```
 
-### 14.9 Stream Events (Monitoring)
+### 14.9 Enqueue a Pending Job
+
+```bash
+grpcurl -plaintext -d '{
+  "type": "payment.process",
+  "args": [
+    {"stringValue": "order_12345"},
+    {"numberValue": 99.99}
+  ],
+  "options": {
+    "queue": "payments",
+    "pending": true
+  }
+}' localhost:9090 ojs.v1.OJSService/Enqueue
+```
+
+Response:
+
+```json
+{
+  "job": {
+    "id": "019462a0-d5e6-7def-8abc-123456789015",
+    "type": "payment.process",
+    "queue": "payments",
+    "args": [
+      {"stringValue": "order_12345"},
+      {"numberValue": 99.99}
+    ],
+    "state": "JOB_STATE_PENDING",
+    "attempt": 0,
+    "createdAt": "2025-02-12T10:30:00.200Z",
+    "enqueuedAt": "2025-02-12T10:30:00.202Z"
+  }
+}
+```
+
+### 14.10 Activate a Pending Job
+
+```bash
+grpcurl -plaintext -d '{
+  "jobId": "019462a0-d5e6-7def-8abc-123456789015"
+}' localhost:9090 ojs.v1.OJSService/ActivateJob
+```
+
+Response:
+
+```json
+{
+  "job": {
+    "id": "019462a0-d5e6-7def-8abc-123456789015",
+    "type": "payment.process",
+    "queue": "payments",
+    "args": [
+      {"stringValue": "order_12345"},
+      {"numberValue": 99.99}
+    ],
+    "state": "JOB_STATE_AVAILABLE",
+    "attempt": 0,
+    "createdAt": "2025-02-12T10:30:00.200Z",
+    "enqueuedAt": "2025-02-12T10:30:00.202Z"
+  }
+}
+```
+
+### 14.11 Stream Events (Monitoring)
 
 ```bash
 grpcurl -plaintext -d '{
@@ -1822,7 +1911,7 @@ This opens a long-lived connection. Events are printed as they arrive:
 }
 ```
 
-### 14.10 Stream Jobs (Worker)
+### 14.12 Stream Jobs (Worker)
 
 ```bash
 grpcurl -plaintext -d '{
@@ -1834,7 +1923,7 @@ grpcurl -plaintext -d '{
 
 Jobs are pushed to the client as they become available. Each job MUST be acknowledged via a separate `Ack` or `Nack` call.
 
-### 14.11 Queue Statistics
+### 14.13 Queue Statistics
 
 ```bash
 grpcurl -plaintext -d '{"queue": "email"}' \
@@ -1862,7 +1951,7 @@ Response:
 }
 ```
 
-### 14.12 Create a Workflow
+### 14.14 Create a Workflow
 
 ```bash
 grpcurl -plaintext -d '{
@@ -1908,7 +1997,7 @@ Response:
 }
 ```
 
-### 14.13 With Metadata (Authentication + Request ID)
+### 14.15 With Metadata (Authentication + Request ID)
 
 ```bash
 grpcurl -plaintext \
@@ -1930,7 +2019,7 @@ Implementations that advertise gRPC support MUST implement all RPCs correspondin
 | Conformance Level | Required RPCs |
 |---|---|
 | **Level 0 (Core)** | `Manifest`, `Health`, `Enqueue`, `Fetch`, `Ack`, `Nack`, `ListQueues` |
-| **Level 1 (Reliable)** | Level 0 + `GetJob`, `CancelJob`, `Heartbeat`, `ListDeadLetter`, `RetryDeadLetter`, `DeleteDeadLetter` |
+| **Level 1 (Reliable)** | Level 0 + `GetJob`, `CancelJob`, `ActivateJob`, `Heartbeat`, `ListDeadLetter`, `RetryDeadLetter`, `DeleteDeadLetter` |
 | **Level 2 (Scheduled)** | Level 1 + `RegisterCron`, `UnregisterCron`, `ListCron` |
 | **Level 3 (Orchestration)** | Level 2 + `CreateWorkflow`, `GetWorkflow`, `CancelWorkflow` |
 | **Level 4 (Advanced)** | Level 3 + `EnqueueBatch`, `QueueStats`, `PauseQueue`, `ResumeQueue` |
