@@ -20,6 +20,7 @@ ADRs document significant architectural decisions made during the design of OJS,
 | [010](010-deduplication-strategy.md) | Deduplication Strategy | Accepted |
 | [011](011-opentelemetry-native-observability.md) | OpenTelemetry-Native Observability | Accepted |
 | [012](012-control-plane-data-plane-separation.md) | Control Plane / Data Plane Separation | Accepted |
+| [018](018-federation-topology.md) | Federation Topology — Client-Side Hub-Spoke and Mesh | Proposed |
 
 ## Creating New ADRs
 

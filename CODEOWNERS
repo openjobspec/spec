@@ -1,0 +1,11 @@
+# CODEOWNERS — https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Default: all specification changes require spec editor review
+* @openjobspec/spec-editors
+
+# ADRs and RFCs
+adrs/ @openjobspec/spec-editors
+rfcs/ @openjobspec/spec-editors
+
+# Core specification
+spec/ @openjobspec/spec-editors
