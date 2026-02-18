@@ -4,7 +4,7 @@
 |-------------|------------------------------------------------|
 | **Title**   | OJS Migration Guide                            |
 | **Version** | 1.0.0-rc.1                                     |
-| **Date**    | 2026-02-15                                     |
+| **Date**    | 2026-02-19                                     |
 | **Status**  | Release Candidate 1                            |
 | **Maturity** | Experimental                                   |
 | **Tier**    | Guidance Document                              |
@@ -166,7 +166,7 @@ Every migration MUST have a documented rollback plan. At minimum:
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "abc123def456",
   "type": "email.send",
   "queue": "mailers",
@@ -253,7 +253,7 @@ BullMQ's parent-child model maps most closely to OJS `group` (parallel children)
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "pay_abc123",
   "type": "payment.process",
   "queue": "payments",
@@ -342,7 +342,7 @@ BullMQ's parent-child model maps most closely to OJS `group` (parallel children)
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "rpt_f47ac10b",
   "type": "report.generate",
   "queue": "reports",
@@ -422,7 +422,7 @@ BullMQ's parent-child model maps most closely to OJS `group` (parallel children)
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "eml_a1b2c3d4",
   "type": "email.send",
   "queue": "critical",
@@ -585,7 +585,7 @@ In OJS, the same job is a plain JSON object. The Go SDK wraps this, but the on-t
 
 ```json
 {
-  "specversion": "1.0.0-rc.1",
+  "specversion": "1.0",
   "id": "pay_12345",
   "type": "payment.process",
   "queue": "payments",

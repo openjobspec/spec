@@ -4,7 +4,7 @@
 |-------------|------------------------------------------------|
 | **Title**   | OJS SDK Design Guidelines                      |
 | **Version** | 1.0.0-rc.1                                     |
-| **Date**    | 2026-02-15                                     |
+| **Date**    | 2026-02-19                                     |
 | **Status**  | Release Candidate 1                            |
 | **Maturity** | Informational                                  |
 | **Tier**    | Official Extension                             |
@@ -792,7 +792,7 @@ When OpenTelemetry is enabled, the SDK SHOULD emit the following metrics:
 
 ### 14.1 SDK Version vs Spec Version
 
-An SDK MUST declare which OJS specification version it implements. The SDK's own version (e.g., `v2.3.1`) is independent of the specification version (e.g., `1.0.0-rc.1`). An SDK MUST expose the supported specification version programmatically:
+An SDK MUST declare which OJS specification version it implements. The SDK's own version (e.g., `v2.3.1`) is independent of the specification version (e.g., `1.0`). An SDK MUST expose the supported specification version programmatically:
 
 ```go
 ojs.SpecVersion()  // "1.0.0"

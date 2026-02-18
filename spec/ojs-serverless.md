@@ -5,7 +5,7 @@
 | Field       | Value                  |
 |-------------|------------------------|
 | Version     | 0.1.0                  |
-| Date        | 2026-02-16             |
+| Date        | 2026-02-19             |
 | Status      | Experimental           |
 | Maturity    | Experimental           |
 | Layer       | 3 (Protocol Binding)   |
@@ -69,7 +69,7 @@ X-OJS-Job-ID: 01234567-89ab-7cde-8000-000000000001
 
 {
   "job": {
-    "specversion": "1.0.0-rc.1",
+    "specversion": "1.0",
     "id": "01234567-89ab-7cde-8000-000000000001",
     "type": "email.send",
     "queue": "default",
