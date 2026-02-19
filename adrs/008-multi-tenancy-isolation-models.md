@@ -34,3 +34,4 @@ Tenant identification is deliberately placed in job metadata rather than as a fi
 - **Shared model fairness**: Implementations using shared infrastructure must implement tenant-aware fair scheduling to prevent noisy neighbors, which adds scheduling complexity
 - **Tenant-aware routing**: Backends must handle routing logic that inspects metadata to direct jobs to the correct tenant context
 - **Inconsistent guarantees**: Different isolation models provide different security guarantees, requiring clear documentation for operators choosing between them
+
