@@ -507,3 +507,4 @@ import "google/protobuf/struct.proto";  // provides Value, Struct, ListValue
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0-rc.1 | 2026-02-15 | Initial release candidate. |
+
