@@ -34,3 +34,4 @@ The Admin API is optional — it is not required for Level 0 conformance. Implem
 - **Two API surfaces to maintain**: Implementations must design, document, and version two distinct API surfaces instead of one
 - **Cross-cutting concerns**: Some operations span both planes (e.g., cancelling a job affects the data plane state but is initiated from the control plane), requiring careful coordination
 - **Discovery and routing**: Clients and infrastructure must know how to reach both API surfaces, which may be deployed on different hosts or ports
+
