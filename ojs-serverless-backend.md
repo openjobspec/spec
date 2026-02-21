@@ -300,3 +300,4 @@ A serverless OJS backend MAY:
 - [ ] Implement workflow endpoints
 - [ ] Support batch enqueue
 - [ ] Implement cron via platform-native schedulers
+
