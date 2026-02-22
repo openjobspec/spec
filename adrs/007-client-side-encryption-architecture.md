@@ -37,3 +37,4 @@ For operational visibility, a separate Codec Server (an HTTP service that perfor
 - **Deduplication on encrypted fields**: Identical plaintext arguments produce different ciphertext (with proper IV/nonce usage), making content-based deduplication impossible on encrypted args
 - **Server-side filtering**: Backends cannot filter or route jobs based on encrypted argument values without a Codec Server roundtrip
 - **Debugging complexity**: Troubleshooting job failures requires access to a Codec Server or local decryption keys to inspect arguments
+
