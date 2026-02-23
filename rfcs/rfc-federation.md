@@ -1,9 +1,9 @@
 # RFC-0001: Multi-Region Federation
 
-- **Stage**: 0 (Strawman)
-- **Champion**: TBD
+- **Stage**: 1 (Proposal)
+- **Champion**: @josedab
 - **Created**: 2025-07-25
-- **Last Updated**: 2025-07-25
+- **Last Updated**: 2026-02-20
 - **Target Spec Version**: 1.1.0
 
 ## Summary

@@ -341,3 +341,46 @@ data: {"job_id":"01926f5e-7a3c-7def-8000-111111111111","queue":"default","type":
 ```json
 {"type":"unsubscribed","channel":"queue:default"}
 ```
+
+---
+
+## 9. SDK Implementation Guidelines
+
+This section provides normative guidance for SDK implementers adding real-time subscription support.
+
+### 9.1 Client API Surface
+
+An OJS SDK providing real-time support SHOULD expose the following methods:
+
+```
+client.subscribe(channel, callback)    → Subscription
+client.subscribeJob(jobId, callback)   → Subscription
+client.subscribeQueue(queue, callback) → Subscription
+subscription.unsubscribe()             → void
+```
+
+### 9.2 Transport Selection
+
+SDKs SHOULD default to SSE for simplicity and SHOULD support WebSocket as an opt-in transport. The transport selection SHOULD be configurable at client construction time:
+
+```
+client = OJSClient(url, { realtime: "sse" })   // default
+client = OJSClient(url, { realtime: "ws" })     // opt-in
+```
+
+### 9.3 Reconnection
+
+SDKs MUST implement automatic reconnection with exponential backoff when the real-time connection drops. The SDK SHOULD use the `Last-Event-ID` header (SSE) or replay from the last received event ID (WebSocket) to resume without data loss.
+
+### 9.4 Event Type Mapping
+
+SDKs SHOULD provide typed event objects rather than raw JSON. At minimum, the following event types MUST be supported:
+
+| Event Type | Trigger |
+|-----------|---------|
+| `job.state_changed` | Any job state transition |
+| `job.completed` | Job reaches `completed` state |
+| `job.failed` | Job reaches `retryable` or `discarded` state |
+| `job.progress` | Job reports progress update |
+| `queue.paused` | Queue paused |
+| `queue.resumed` | Queue resumed |
