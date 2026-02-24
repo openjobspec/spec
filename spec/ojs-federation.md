@@ -1,14 +1,14 @@
-# Open Job Spec: Multi-Region Federation Extension
+# Open Job Spec — Multi-Backend Federation Extension
 
-| Field       | Value                        |
-|-------------|------------------------------|
-| Version     | 0.1.0                        |
-| Date        | 2026-02-19                   |
-| Status      | Draft                        |
-| Stage       | 1 (Proposal)                 |
-| Maturity    | Alpha                        |
-| Layer       | 1 -- Core (Extension)        |
-| Spec URI    | `urn:ojs:spec:federation`    |
+| Field         | Value                        |
+|---------------|------------------------------|
+| **Title**     | OJS Federation               |
+| **Version**   | 0.1.0                        |
+| **Date**      | 2026-02-19                   |
+| **Status**    | Draft                        |
+| **Maturity**  | Experimental                 |
+| **Layer**     | Extension                    |
+| Spec URI      | `urn:ojs:spec:federation`    |
 
 ---
 
@@ -16,40 +16,47 @@
 
 1. [Overview and Rationale](#1-overview-and-rationale)
 2. [Terminology](#2-terminology)
-3. [Region Topology](#3-region-topology)
-   - 3.1 [Hub-Spoke](#31-hub-spoke)
-   - 3.2 [Mesh](#32-mesh)
-   - 3.3 [Active-Active](#33-active-active)
-4. [Job Routing Strategies](#4-job-routing-strategies)
-   - 4.1 [Affinity Routing](#41-affinity-routing)
-   - 4.2 [Overflow Routing](#42-overflow-routing)
-   - 4.3 [Round-Robin Routing](#43-round-robin-routing)
-   - 4.4 [Latency-Based Routing](#44-latency-based-routing)
-   - 4.5 [Geo-Pin Routing](#45-geo-pin-routing)
-   - 4.6 [Active-Passive Routing](#46-active-passive-routing)
-   - 4.7 [Geographic Routing](#47-geographic-routing)
-5. [Region Discovery and Health](#5-region-discovery-and-health)
-   - 5.1 [Region Registry](#51-region-registry)
-   - 5.2 [Health Checking](#52-health-checking)
-   - 5.3 [Circuit Breaker](#53-circuit-breaker)
-6. [Cross-Region Consistency Model](#6-cross-region-consistency-model)
-   - 6.1 [Eventual Consistency](#61-eventual-consistency)
-   - 6.2 [Replication](#62-replication)
-   - 6.3 [Conflict Resolution](#63-conflict-resolution)
-7. [Failure Handling](#7-failure-handling)
-   - 7.1 [Failover Semantics](#71-failover-semantics)
-   - 7.2 [Circuit Breaker Pattern](#72-circuit-breaker-pattern)
-   - 7.3 [Failover Policy Configuration](#73-failover-policy-configuration)
-8. [Wire Format](#8-wire-format)
-   - 8.1 [Federation Metadata Attributes](#81-federation-metadata-attributes)
-   - 8.2 [Job Envelope with Federation](#82-job-envelope-with-federation)
-9. [API Extensions](#9-api-extensions)
-   - 9.1 [Region Registry Endpoint](#91-region-registry-endpoint)
-   - 9.2 [Route Resolution Endpoint](#92-route-resolution-endpoint)
-   - 9.3 [Federation Health Endpoint](#93-federation-health-endpoint)
-10. [Security Considerations](#10-security-considerations)
-11. [Conformance Requirements](#11-conformance-requirements)
-12. [Examples](#12-examples)
+3. [Multi-Backend Federation](#3-multi-backend-federation)
+   - 3.1 [Federation Proxy](#31-federation-proxy)
+   - 3.2 [Routing Rules](#32-routing-rules)
+   - 3.3 [Unified Operations](#33-unified-operations)
+   - 3.4 [Consistency Model](#34-consistency-model)
+   - 3.5 [Discovery](#35-discovery)
+   - 3.6 [Health Checking](#36-health-checking)
+4. [Region Topology](#4-region-topology)
+   - 4.1 [Hub-Spoke](#41-hub-spoke)
+   - 4.2 [Mesh](#42-mesh)
+   - 4.3 [Active-Active](#43-active-active)
+5. [Job Routing Strategies](#5-job-routing-strategies)
+   - 5.1 [Affinity Routing](#51-affinity-routing)
+   - 5.2 [Overflow Routing](#52-overflow-routing)
+   - 5.3 [Round-Robin Routing](#53-round-robin-routing)
+   - 5.4 [Latency-Based Routing](#54-latency-based-routing)
+   - 5.5 [Geo-Pin Routing](#55-geo-pin-routing)
+   - 5.6 [Active-Passive Routing](#56-active-passive-routing)
+   - 5.7 [Geographic Routing](#57-geographic-routing)
+6. [Region Discovery and Health](#6-region-discovery-and-health)
+   - 6.1 [Region Registry](#61-region-registry)
+   - 6.2 [Health Checking](#62-health-checking)
+   - 6.3 [Circuit Breaker](#63-circuit-breaker)
+7. [Cross-Region Consistency Model](#7-cross-region-consistency-model)
+   - 7.1 [Eventual Consistency](#71-eventual-consistency)
+   - 7.2 [Replication](#72-replication)
+   - 7.3 [Conflict Resolution](#73-conflict-resolution)
+8. [Failure Handling](#8-failure-handling)
+   - 8.1 [Failover Semantics](#81-failover-semantics)
+   - 8.2 [Circuit Breaker Pattern](#82-circuit-breaker-pattern)
+   - 8.3 [Failover Policy Configuration](#83-failover-policy-configuration)
+9. [Wire Format](#9-wire-format)
+   - 9.1 [Federation Metadata Attributes](#91-federation-metadata-attributes)
+   - 9.2 [Job Envelope with Federation](#92-job-envelope-with-federation)
+10. [API Extensions](#10-api-extensions)
+    - 10.1 [Region Registry Endpoint](#101-region-registry-endpoint)
+    - 10.2 [Route Resolution Endpoint](#102-route-resolution-endpoint)
+    - 10.3 [Federation Health Endpoint](#103-federation-health-endpoint)
+11. [Security Considerations](#11-security-considerations)
+12. [Conformance Requirements](#12-conformance-requirements)
+13. [Examples](#13-examples)
 
 ---
 
@@ -84,14 +91,109 @@ Federation is implemented as a **client-side routing layer** above standard OJS 
 | Affinity         | A routing preference that favors the local region but allows fallback.                       |
 | Overflow         | A load-based routing strategy that distributes jobs to the least-loaded region.              |
 | Replication      | The propagation of job metadata from one region to another for cross-region visibility.       |
+| Federation Proxy | A router that dispatches jobs to multiple OJS backends based on routing rules.                |
+| Backend          | An individual OJS server (e.g., Redis-backed, Postgres-backed) participating in the federation. |
 
 ---
 
-## 3. Region Topology
+## 3. Multi-Backend Federation
+
+Multi-backend federation enables a single logical OJS endpoint to route jobs across multiple heterogeneous backends. This allows operators to use the best backend for each workload — for example, Redis for low-latency ephemeral queues and PostgreSQL for durable transactional workloads.
+
+### 3.1 Federation Proxy
+
+A **federation proxy** is an HTTP server that sits in front of multiple OJS backends and dispatches requests based on routing rules. The proxy:
+
+- Accepts all standard OJS API requests (`/ojs/v1/jobs`, `/ojs/v1/workers/fetch`, etc.)
+- Routes job submissions to the appropriate backend based on queue name, tags, or configurable rules
+- Fans out worker fetch requests to all matching backends and merges results
+- Provides federation-specific endpoints for backend discovery and aggregated statistics
+- Performs active health checking with automatic failover to healthy backends
+
+The proxy is **stateless** — all routing decisions are based on the configuration and current backend health.
+
+### 3.2 Routing Rules
+
+The federation proxy supports the following routing mechanisms, evaluated in order:
+
+1. **Tag-based routing**: Jobs with specific tags are routed to designated backends. For example, a `durable` tag routes to a Postgres backend.
+2. **Queue-to-backend mapping**: Each backend declares which queues it serves. Jobs are routed to the backend that owns the target queue.
+3. **Priority-based fallback**: When multiple backends can serve a queue, the one with the highest priority is selected.
+4. **Round-robin**: Distribute jobs evenly across backends that serve the same queue.
+5. **Default backend**: If no rule matches, jobs are routed to the configured default backend.
+
+**Configuration example:**
+
+```yaml
+federation:
+  backends:
+    redis-fast:
+      url: "http://localhost:8080"
+      queues: ["default", "email", "notifications"]
+      priority: 1
+    postgres-durable:
+      url: "http://localhost:8081"
+      queues: ["billing", "reports", "etl"]
+      priority: 1
+  routing:
+    default_backend: redis-fast
+    tag_rules:
+      - tag: "durable"
+        backend: postgres-durable
+      - tag: "fast"
+        backend: redis-fast
+```
+
+### 3.3 Unified Operations
+
+The federation proxy provides unified cross-backend operations:
+
+- **Cross-backend job lookup**: `GET /ojs/v1/jobs/{id}` queries all healthy backends and returns the first match.
+- **Aggregated queue stats**: `GET /ojs/federation/stats` collects stats from all backends and returns a merged view.
+- **Unified dead letter**: Dead letter queues from all backends can be queried through a single endpoint.
+- **Backend listing**: `GET /ojs/federation/backends` returns all configured backends with their health status, queues, and latency.
+
+### 3.4 Consistency Model
+
+Multi-backend federation uses **eventual consistency**. Each backend is authoritative for the jobs it stores:
+
+- A job submitted to a backend is only visible on that backend.
+- Cross-backend job lookup queries backends sequentially; results reflect point-in-time state.
+- There is no cross-backend replication — each backend operates independently.
+- Job IDs SHOULD be globally unique (e.g., UUIDv7) to avoid collisions across backends.
+
+### 3.5 Discovery
+
+The federation proxy discovers backends via its configuration file. Each backend entry MUST include:
+
+| Field             | Type     | Required | Description                                          |
+|-------------------|----------|----------|------------------------------------------------------|
+| `url`             | string   | Yes      | Base URL of the OJS backend                          |
+| `queues`          | []string | Yes      | Queues served by this backend                        |
+| `priority`        | integer  | No       | Routing priority (lower = higher priority, default: 1) |
+| `health_interval` | duration | No       | Health check interval (default: 10s)                 |
+
+Backends MUST expose a manifest endpoint at `GET /ojs/v1/health` that returns their status.
+
+### 3.6 Health Checking
+
+The federation proxy performs active health probes against all configured backends:
+
+- **Probe endpoint**: `GET /ojs/v1/health` on each backend
+- **Healthy**: HTTP 200 response within the timeout period
+- **Unhealthy**: Non-200 response, timeout, or connection error
+- **Failover**: Unhealthy backends are excluded from routing; traffic is redirected to healthy backends serving the same queues
+- **Recovery**: Backends are re-included once health checks pass again
+
+Health check results are exposed via `GET /ojs/federation/backends`.
+
+---
+
+## 4. Region Topology
 
 OJS federation supports three topology models. Implementations MUST support at least one topology and SHOULD document which topologies are supported.
 
-### 3.1 Hub-Spoke
+### 4.1 Hub-Spoke
 
 ```
         ┌─────────┐
@@ -109,7 +211,7 @@ One hub region coordinates all cross-region routing decisions. Spokes forward ro
 
 **RECOMMENDED for**: 2–3 regions with a clear primary datacenter.
 
-### 3.2 Mesh
+### 4.2 Mesh
 
 ```
     ┌─────────┐     ┌─────────┐
@@ -126,19 +228,19 @@ Every region communicates directly with every other region. No central coordinat
 
 **RECOMMENDED for**: Small deployments requiring maximum regional independence.
 
-### 3.3 Active-Active
+### 4.3 Active-Active
 
-All regions accept writes and process jobs independently. Cross-region replication ensures eventual visibility of job metadata. Conflict resolution uses last-writer-wins (see [Section 6.3](#63-conflict-resolution)).
+All regions accept writes and process jobs independently. Cross-region replication ensures eventual visibility of job metadata. Conflict resolution uses last-writer-wins (see [Section 7.3](#73-conflict-resolution)).
 
 **RECOMMENDED for**: Deployments requiring zero single points of failure.
 
 ---
 
-## 4. Job Routing Strategies
+## 5. Job Routing Strategies
 
 A routing strategy determines which region receives a job. Federated clients MUST support at least `affinity` and `geo-pin` routing. All other strategies are OPTIONAL.
 
-### 4.1 Affinity Routing
+### 5.1 Affinity Routing
 
 **Default strategy.** Route to the local region if healthy; fall back to the next-closest healthy region by latency.
 
@@ -147,7 +249,7 @@ A routing strategy determines which region receives a job. Federated clients MUS
 2. Otherwise, select the healthy region with the lowest measured latency.
 3. If no healthy region is available, return an error.
 
-### 4.2 Overflow Routing
+### 5.2 Overflow Routing
 
 Route to the region with the lowest current load. Load MAY be determined by queue depth, active job count, or a weighted random selection based on region weights.
 
@@ -156,7 +258,7 @@ Route to the region with the lowest current load. Load MAY be determined by queu
 2. Select the region with the lowest load (or use weighted random selection).
 3. If no healthy region is available, return an error.
 
-### 4.3 Round-Robin Routing
+### 5.3 Round-Robin Routing
 
 Distribute jobs across regions in a deterministic cyclic order. Each successive job is routed to the next region in the list.
 
@@ -165,7 +267,7 @@ Distribute jobs across regions in a deterministic cyclic order. Each successive 
 2. Select the next healthy region in order, skipping unhealthy regions.
 3. If no healthy region is available, return an error.
 
-### 4.4 Latency-Based Routing
+### 5.4 Latency-Based Routing
 
 Always route to the healthy region with the lowest measured latency, regardless of locality.
 
@@ -174,7 +276,7 @@ Always route to the healthy region with the lowest measured latency, regardless 
 2. Select the region with the lowest latency.
 3. If no healthy region is available, return an error.
 
-### 4.5 Geo-Pin Routing
+### 5.5 Geo-Pin Routing
 
 Job MUST execute in the specified region. If that region is unavailable, the enqueue operation MUST fail rather than route to a different region.
 
@@ -185,7 +287,7 @@ Job MUST execute in the specified region. If that region is unavailable, the enq
 
 **Rationale**: Data sovereignty requirements (e.g., GDPR, HIPAA) mandate that certain jobs execute within specific jurisdictions. Silent re-routing would violate compliance requirements.
 
-### 4.6 Active-Passive Routing
+### 5.6 Active-Passive Routing
 
 Route to the primary region. If the primary is unhealthy, fail over to secondary regions in priority order.
 
@@ -194,7 +296,7 @@ Route to the primary region. If the primary is unhealthy, fail over to secondary
 2. If primary is unhealthy, route to the first healthy secondary region.
 3. If no region is healthy, return an error.
 
-### 4.7 Geographic Routing
+### 5.7 Geographic Routing
 
 Route based on geographic context hints in the job metadata. A mapping table translates geographic hints (e.g., country codes, continent codes) to target regions.
 
@@ -205,9 +307,9 @@ Route based on geographic context hints in the job metadata. A mapping table tra
 
 ---
 
-## 5. Region Discovery and Health
+## 6. Region Discovery and Health
 
-### 5.1 Region Registry
+### 6.1 Region Registry
 
 Each federation maintains a registry of participating regions. The registry MUST be provided at client initialization via static configuration. Implementations MAY additionally support dynamic registry updates.
 
@@ -248,7 +350,7 @@ A region entry MUST include:
 }
 ```
 
-### 5.2 Health Checking
+### 6.2 Health Checking
 
 Each region MUST be monitored by calling `GET /ojs/v1/health` at a configurable interval. The default interval is 10 seconds.
 
@@ -256,7 +358,7 @@ A region is **healthy** when the health endpoint returns HTTP 200 with `"status"
 
 Implementations SHOULD expose measured latency for each region to support latency-based routing.
 
-### 5.3 Circuit Breaker
+### 6.3 Circuit Breaker
 
 Per-region circuit breakers prevent cascading failures. Implementations MUST support configurable thresholds.
 
@@ -272,15 +374,15 @@ Default thresholds (MUST be configurable):
 
 ---
 
-## 6. Cross-Region Consistency Model
+## 7. Cross-Region Consistency Model
 
-### 6.1 Eventual Consistency
+### 7.1 Eventual Consistency
 
 Federation uses **eventual consistency** for cross-region job metadata. Strong cross-region consistency is explicitly a non-goal.
 
 **Rationale**: Background job systems already tolerate at-least-once semantics. Cross-region strong consistency would add 100–300ms to every write operation via consensus protocols, which is unacceptable for job enqueue latency.
 
-### 6.2 Replication
+### 7.2 Replication
 
 Replication of job metadata (ID, type, state, timestamps) across regions is OPTIONAL. When supported:
 
@@ -289,7 +391,7 @@ Replication of job metadata (ID, type, state, timestamps) across regions is OPTI
 - Replication lag SHOULD be monitored and exposed via metrics.
 - Implementations MAY support metadata-only replication (ID, type, state) or full replication (including `args`).
 
-### 6.3 Conflict Resolution
+### 7.3 Conflict Resolution
 
 When the same `federation_id` appears in multiple regions due to concurrent writes:
 
@@ -299,9 +401,9 @@ When the same `federation_id` appears in multiple regions due to concurrent writ
 
 ---
 
-## 7. Failure Handling
+## 8. Failure Handling
 
-### 7.1 Failover Semantics
+### 8.1 Failover Semantics
 
 When a region becomes unavailable, the federation client MUST:
 
@@ -315,7 +417,7 @@ When a region becomes unavailable, the federation client MUST:
    - **Active-Passive**: Use the next secondary region in priority order.
 3. Log a structured event: `ojs.federation.failover` with `from_region`, `to_region`, and `reason`.
 
-### 7.2 Circuit Breaker Pattern
+### 8.2 Circuit Breaker Pattern
 
 The circuit breaker prevents repeated requests to a failing region:
 
@@ -340,7 +442,7 @@ Implementations MUST:
 - Send a single probe request in `half-open` state.
 - Transition to `closed` on probe success or back to `open` on probe failure.
 
-### 7.3 Failover Policy Configuration
+### 8.3 Failover Policy Configuration
 
 Federated clients SHOULD support the following configuration:
 
@@ -366,9 +468,9 @@ Federated clients SHOULD support the following configuration:
 
 ---
 
-## 8. Wire Format
+## 9. Wire Format
 
-### 8.1 Federation Metadata Attributes
+### 9.1 Federation Metadata Attributes
 
 Federation attributes are encoded in the job's `meta` object with the `ojs.federation.` prefix:
 
@@ -383,7 +485,7 @@ Federation attributes are encoded in the job's `meta` object with the `ojs.feder
 
 The `federation_id` MUST be a UUIDv7. Federated clients MUST generate it automatically if not provided.
 
-### 8.2 Job Envelope with Federation
+### 9.2 Job Envelope with Federation
 
 **Affinity routing example:**
 
@@ -430,11 +532,11 @@ The `federation_id` MUST be a UUIDv7. Federated clients MUST generate it automat
 
 ---
 
-## 9. API Extensions
+## 10. API Extensions
 
 Federation introduces three OPTIONAL API endpoints. These endpoints are exposed by the federated client layer, not by individual OJS backends.
 
-### 9.1 Region Registry Endpoint
+### 10.1 Region Registry Endpoint
 
 **`GET /v1/federation/regions`**
 
@@ -466,7 +568,7 @@ Returns the current region registry with health status.
 }
 ```
 
-### 9.2 Route Resolution Endpoint
+### 10.2 Route Resolution Endpoint
 
 **`POST /v1/federation/route`**
 
@@ -496,7 +598,7 @@ Resolves the target region for a job without enqueuing it. Useful for dry-run va
 }
 ```
 
-### 9.3 Federation Health Endpoint
+### 10.3 Federation Health Endpoint
 
 **`GET /v1/federation/health`**
 
@@ -531,7 +633,7 @@ Returns aggregate federation health, including per-region status and replication
 
 ---
 
-## 10. Security Considerations
+## 11. Security Considerations
 
 ### Cross-Region Authentication
 
@@ -548,7 +650,7 @@ All inter-region communication MUST use HTTPS. Implementations SHOULD support:
 
 ---
 
-## 11. Conformance Requirements
+## 12. Conformance Requirements
 
 Federation is an OPTIONAL extension. It does not affect conformance levels 0–4.
 
@@ -568,7 +670,7 @@ Implementations claiming federation support MUST satisfy:
 
 ---
 
-## 12. Examples
+## 13. Examples
 
 ### Complete Federated Job Envelope
 
