@@ -35,3 +35,4 @@ The Framework Adapter interface is the same for both strategies — implementati
 - **Polling latency**: Outbox-based enqueue adds latency between transaction commit and job visibility, which may be unacceptable for time-sensitive jobs
 - **Outbox table maintenance**: The outbox table accumulates rows and requires periodic cleanup to prevent unbounded growth
 - **Relay failure modes**: If the relay process crashes or falls behind, jobs queue up in the outbox, requiring alerting and recovery procedures
+
