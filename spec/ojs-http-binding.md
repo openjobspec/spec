@@ -132,6 +132,39 @@ If a client requests a version the server does not support, the server MUST resp
 
 **Rationale:** Embedding the major version in the URL path (`/v1`) handles breaking changes, while the header enables fine-grained negotiation within a major version for non-breaking additions.
 
+### 3.3 Compatibility Guarantees
+
+Within a major version (e.g., `v1`):
+
+- Existing endpoints MUST NOT be removed.
+- Existing response fields MUST NOT be removed or change type.
+- New optional request fields MAY be added.
+- New response fields MAY be added.
+- New endpoints MAY be added.
+- Error codes MUST NOT change meaning.
+
+> *Rationale*: These guarantees allow clients to upgrade SDK versions without breaking existing integrations. New features are always additive within a major version.
+
+### 3.4 Deprecation Policy
+
+When a feature, endpoint, or field is deprecated:
+
+1. The `Sunset` HTTP header MUST be included with the retirement date ([RFC 8594](https://www.rfc-editor.org/rfc/rfc8594)).
+2. The `Deprecation` header MUST be set to `true`.
+3. A minimum **12-month deprecation period** MUST be observed before removal.
+4. Deprecations MUST be announced in the CHANGELOG and release notes.
+
+Example response for a deprecated endpoint:
+
+```http
+HTTP/1.1 200 OK
+Deprecation: true
+Sunset: Sat, 01 Mar 2028 00:00:00 GMT
+Link: <https://openjobspec.org/spec/v2/migration>; rel="successor-version"
+```
+
+> *Rationale*: A 12-month deprecation window gives production deployments ample time to migrate. The `Sunset` header is a machine-readable signal that allows automated monitoring tools to alert operators before a deprecated endpoint is removed.
+
 ---
 
 ## 4. Content Negotiation

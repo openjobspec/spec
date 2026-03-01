@@ -428,6 +428,19 @@ System-managed attributes are set and maintained by the implementation. Clients 
 
    > *Rationale*: Forward compatibility requires that older implementations can handle jobs created by newer clients that may include attributes from a future spec version or from extension specifications.
 
+### 5.6 Frequently Asked Questions
+
+#### Why `args` (Array) Instead of `payload` (Object)?
+
+OJS uses `args` as an ordered JSON array rather than a named-field object. This is a deliberate design choice (see [ADR-003](../adrs/003-args-over-payload.md)):
+
+1. **Positional arguments map naturally to function calls.** `args: ["user@example.com", "Welcome!", "Hello"]` maps directly to `sendEmail(to, subject, body)` in any language.
+2. **Arrays are order-preserving by specification.** JSON object key ordering is implementation-dependent per RFC 8259.
+3. **Simpler schema validation.** Array schemas (tuple validation in JSON Schema `prefixItems`) are more compact than object schemas.
+4. **Polyglot compatibility.** Positional arguments are the universal calling convention across Go, Python, Java, Ruby, Rust, TypeScript, and .NET.
+
+For named or structured data, use `meta` (object) for job metadata, or encode a single object as `args: [{"to": "...", "subject": "..."}]`.
+
 ---
 
 ## 6. Job Lifecycle State Machine

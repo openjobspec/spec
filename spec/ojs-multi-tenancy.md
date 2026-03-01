@@ -1,19 +1,14 @@
 # Open Job Spec: Multi-Tenancy and Fairness
 
-> **⚠️ EXPERIMENTAL**: This extension is under active development. The specification
-> may change in breaking ways between versions. Implementations and SDKs that adopt
-> this extension should expect migration work when the spec evolves. Feedback is
-> encouraged via the OJS RFC process.
-
 | Field        | Value                                                    |
 |-------------|----------------------------------------------------------|
 | **Title**   | OJS Multi-Tenancy Specification                          |
-| **Version** | 0.1.0                                                    |
-| **Date**    | 2026-02-19                                               |
-| **Status**  | Experimental                                             |
-| **Maturity** | Experimental                                             |
-| **Tier**    | Experimental Extension                                   |
-| **URI**     | `urn:ojs:ext:experimental:multi-tenancy`                 |
+| **Version** | 1.0.0-rc.1                                               |
+| **Date**    | 2026-03-04                                               |
+| **Status**  | Release Candidate                                        |
+| **Maturity** | Stable                                                   |
+| **Tier**    | Official Extension                                       |
+| **URI**     | `urn:ojs:ext:multi-tenancy`                              |
 | **Requires**| OJS Core Specification (Layer 1)                         |
 
 ---

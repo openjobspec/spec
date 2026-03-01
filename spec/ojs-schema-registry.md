@@ -1,19 +1,14 @@
 # Open Job Spec: Schema Registry Extension
 
-> **⚠️ EXPERIMENTAL**: This extension is under active development. The specification
-> may change in breaking ways between versions. Implementations and SDKs that adopt
-> this extension should expect migration work when the spec evolves. Feedback is
-> encouraged via the OJS RFC process.
-
 | Field        | Value                                                    |
 |-------------|----------------------------------------------------------|
 | **Title**   | OJS Schema Registry                                      |
-| **Version** | 0.1.0                                                    |
-| **Date**    | 2026-02-19                                               |
-| **Status**  | Draft                                                    |
-| **Maturity** | Experimental                                             |
+| **Version** | 1.0.0-rc.1                                               |
+| **Date**    | 2026-03-04                                               |
+| **Status**  | Release Candidate                                        |
+| **Maturity** | Stable                                                   |
 | **Layer**   | Extension                                                |
-| **URI**     | `urn:ojs:ext:experimental:schema-registry`               |
+| **URI**     | `urn:ojs:ext:schema-registry`                            |
 | **Requires**| OJS Core Specification (Layer 1), OJS Job Versioning     |
 
 ---
