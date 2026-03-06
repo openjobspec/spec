@@ -2262,12 +2262,14 @@ Implementations MAY define additional error codes prefixed with `x_` (e.g., `x_c
 
 All list endpoints MUST support the following query parameters for pagination:
 
-| Parameter | Type    | Default | Max   | Description                      |
-|-----------|---------|---------|-------|----------------------------------|
-| `limit`   | integer | `50`    | `100` | Maximum number of results.       |
-| `offset`  | integer | `0`     | --    | Number of results to skip.       |
+| Parameter | Type    | Default | Max   | Description                                        |
+|-----------|---------|---------|-------|----------------------------------------------------|
+| `limit`   | integer | `50`    | `200` | Maximum number of results per page.                |
+| `cursor`  | string  | —       | —     | Opaque cursor from a previous response's `next_cursor`. |
 
-**Rationale:** Offset-based pagination is simple, predictable, and sufficient for administrative endpoints. Cursor-based pagination is more efficient for high-volume streams but adds complexity that is unnecessary for OJS management endpoints. Implementations MAY additionally support cursor-based pagination via a `cursor` parameter.
+Implementations SHOULD also support `offset` (integer, default `0`) for backwards compatibility, but cursor-based pagination is the RECOMMENDED approach for all new integrations.
+
+**Rationale:** Cursor-based pagination provides stable results under concurrent writes (no skipped/duplicated items), scales to large datasets without performance degradation, and avoids the O(n) seek cost of high offsets. The cursor is an opaque string that clients MUST NOT interpret — implementations are free to encode offsets, timestamps, or primary keys.
 
 ### 17.2 Response Format
 
@@ -2277,26 +2279,31 @@ All paginated responses MUST include a `pagination` object:
 {
   "pagination": {
     "total": 1234,
-    "limit": 50,
-    "offset": 0,
-    "has_more": true
+    "has_more": true,
+    "next_cursor": "eyJvZmYiOjUwfQ"
   }
 }
 ```
 
-| Field      | Type    | Description                                           |
-|------------|---------|-------------------------------------------------------|
-| `total`    | integer | Total number of results matching the query.           |
-| `limit`    | integer | The limit that was applied.                           |
-| `offset`   | integer | The offset that was applied.                          |
-| `has_more` | boolean | Whether more results exist beyond this page.          |
+| Field         | Type    | Description                                                    |
+|---------------|---------|----------------------------------------------------------------|
+| `total`       | integer | Total number of results matching the query.                    |
+| `has_more`    | boolean | Whether more results exist beyond this page.                   |
+| `next_cursor` | string  | Opaque cursor for the next page. Empty/absent on the last page.|
 
-Servers MUST NOT return more results than the requested `limit`. Servers MUST return `has_more: true` if `offset + limit < total`.
+For backwards compatibility, responses MAY additionally include `limit` and `offset` fields.
 
-#### Example: Paginated Request
+Servers MUST NOT return more results than the requested `limit`. Servers MUST return `has_more: true` when additional results exist. When `has_more` is true, `next_cursor` MUST be present and non-empty.
+
+#### Example: Cursor-Based Paginated Request
 
 ```bash
-curl -s "https://jobs.example.com/ojs/v1/dead-letter?queue=email&limit=10&offset=20" \
+# First page
+curl -s "https://jobs.example.com/ojs/v1/dead-letter?queue=email&limit=10" \
+  -H "Accept: application/openjobspec+json"
+
+# Next page (using cursor from previous response)
+curl -s "https://jobs.example.com/ojs/v1/dead-letter?queue=email&limit=10&cursor=eyJvZmYiOjEwfQ" \
   -H "Accept: application/openjobspec+json"
 ```
 
@@ -2323,9 +2330,8 @@ X-Request-Id: req_019414d4-0027-7000-a000-000000000001
   ],
   "pagination": {
     "total": 45,
-    "limit": 10,
-    "offset": 20,
-    "has_more": true
+    "has_more": true,
+    "next_cursor": "eyJvZmYiOjIwfQ"
   }
 }
 ```

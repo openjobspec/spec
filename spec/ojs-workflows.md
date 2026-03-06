@@ -1137,9 +1137,108 @@ Temporal provides the most powerful workflow orchestration model:
 
 ---
 
-## 14. Future Work
+## 14. Saga Compensation (Extension)
 
-### 14.1 DAG Support (Targeted for v1.1)
+### 14.1 Overview
+
+OJS supports the **saga pattern** for distributed transactions where each step in a workflow has an optional **compensation handler**. When a step fails, compensation handlers for all previously completed steps run in reverse order, undoing their side effects.
+
+This bridges a key gap between simple job queues and durable execution platforms like Temporal, without requiring deterministic replay.
+
+### 14.2 Compensation Model
+
+Each step in a saga defines:
+
+| Field | Type | Required | Description |
+|-------|------|:--------:|-------------|
+| `name` | string | Yes | Step identifier (unique within the saga) |
+| `job_type` | string | Yes | Job type for the forward action |
+| `args` | array | Yes | Arguments for the forward action |
+| `compensate_type` | string | No | Job type for the compensation action |
+| `compensate_args` | array | No | Arguments for the compensation action |
+
+When a step fails:
+
+1. The saga enters the **compensating** state.
+2. Compensation handlers for completed steps execute in **reverse order** (last completed → first completed).
+3. If all compensations succeed, the saga reaches the **compensated** state.
+4. If a compensation itself fails, the saga reaches the **failed** state and requires manual intervention.
+
+### 14.3 Failure Policies
+
+Implementations MUST support at least one failure policy; additional policies are OPTIONAL:
+
+| Policy | Behavior | Use Case |
+|--------|----------|----------|
+| `compensate` | Run compensations in reverse order immediately on failure | **Default.** Payment + shipping: if shipping fails, refund payment |
+| `retry` | Retry the failed step (up to max_attempts), then compensate | Transient failures (network timeouts) |
+| `skip` | Skip the failed step and continue with remaining steps | Non-critical steps (analytics, logging) |
+
+### 14.4 Saga States
+
+```
+                    ┌──────────┐
+                    │ created  │
+                    └────┬─────┘
+                         │ start
+                    ┌────▼─────┐
+               ┌────│ running  │────┐
+               │    └──────────┘    │
+          all steps              step fails
+          succeed                    │
+               │              ┌──────▼──────┐
+               │              │ compensating │
+               │              └──────┬───────┘
+               │              ┌──────┴───────┐
+               │         all comp.      comp. fails
+               │         succeed             │
+          ┌────▼─────┐  ┌────▼──────┐  ┌─────▼────┐
+          │completed │  │compensated│  │  failed   │
+          └──────────┘  └───────────┘  └──────────┘
+```
+
+### 14.5 Example: Payment Saga
+
+```json
+{
+  "type": "saga",
+  "name": "order-fulfillment",
+  "failure_policy": "compensate",
+  "steps": [
+    {
+      "name": "reserve-inventory",
+      "job_type": "inventory.reserve",
+      "args": ["SKU-001", 2],
+      "compensate_type": "inventory.release",
+      "compensate_args": ["SKU-001", 2]
+    },
+    {
+      "name": "charge-payment",
+      "job_type": "payment.charge",
+      "args": ["card_tok_abc", 49.99],
+      "compensate_type": "payment.refund",
+      "compensate_args": ["card_tok_abc", 49.99]
+    },
+    {
+      "name": "ship-order",
+      "job_type": "shipping.create",
+      "args": ["order-123", "express"]
+    }
+  ]
+}
+```
+
+If `shipping.create` fails, OJS automatically enqueues `payment.refund` and then `inventory.release`.
+
+### 14.6 Conformance
+
+Saga compensation support is OPTIONAL (Extension level). Implementations that support it MUST pass the `ext-saga` conformance suite.
+
+---
+
+## 15. Future Work
+
+### 15.1 DAG Support (Targeted for v1.1)
 
 Full directed acyclic graph support, where any job can declare dependencies on any set of other jobs, is the primary planned extension for OJS workflows. This would enable patterns that cannot be expressed with chain/group/batch composition:
 

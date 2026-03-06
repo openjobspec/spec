@@ -413,6 +413,37 @@ Lists all active rate limit partitions with their current state. Supports pagina
 }
 ```
 
+### 10.4 Standard Rate Limit Response Headers
+
+All OJS API responses MUST include the following rate limit headers as defined by the [IETF RateLimit header fields](https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/) draft and [RFC 6585](https://www.rfc-editor.org/rfc/rfc6585):
+
+| Header | Description | Example |
+|--------|-------------|---------|
+| `X-RateLimit-Limit` | Maximum number of requests permitted in the current window. | `200` |
+| `X-RateLimit-Remaining` | Number of requests remaining in the current window. | `147` |
+| `X-RateLimit-Reset` | Unix timestamp (seconds) when the current window resets. | `1708432860` |
+
+**Rationale:** These headers are the de facto standard across API providers (GitHub, Stripe, Slack, Twitter) and allow clients, SDK retry logic, and monitoring tools to implement intelligent backoff without parsing error response bodies.
+
+When a request is rejected due to rate limiting, the server MUST additionally include:
+
+| Header | Description | Example |
+|--------|-------------|---------|
+| `Retry-After` | Seconds (as a decimal) until the client should retry. | `0.5` |
+
+The response body MUST be a standard OJS error with `code: "rate_limited"`:
+
+```json
+{
+  "code": "rate_limited",
+  "message": "Too many requests. Please retry after the indicated period.",
+  "retryable": true,
+  "hint": "Too many requests. Retry after the Retry-After header value, or consider adjusting the rate limit configuration."
+}
+```
+
+Implementations SHOULD set `X-RateLimit-Limit` to the burst size (the maximum instantaneous capacity) and `X-RateLimit-Remaining` to the number of tokens currently available in the client's rate limit bucket. The `X-RateLimit-Reset` value MUST be the Unix timestamp at which at least one additional request will be permitted.
+
 ---
 
 ## 11. Observability
