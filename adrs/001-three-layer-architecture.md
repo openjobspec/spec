@@ -40,3 +40,4 @@ Each layer depends only on the layer below it. Implementations MUST support Laye
 - **Implementation complexity**: Backend authors must understand the layer boundaries and implement each layer correctly
 - **Specification surface area**: The spec is larger than a monolithic approach — multiple documents must be read and cross-referenced
 - **Version coordination**: Changes to Layer 1 may cascade to Layers 2 and 3, requiring coordinated releases
+
