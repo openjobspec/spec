@@ -34,3 +34,4 @@ W3C Trace Context (the `traceparent` and `tracestate` headers) is the required p
 - **OTel dependency**: Full observability conformance requires OTel SDK integration, adding a dependency that some minimal implementations may resist
 - **Evolving semantic conventions**: OTel messaging semantic conventions are still stabilizing, meaning attribute names may change in future OTel releases
 - **Cardinality management**: High-throughput job systems can produce enormous volumes of spans and metrics, requiring careful sampling and aggregation strategies to avoid overwhelming observability backends
+
