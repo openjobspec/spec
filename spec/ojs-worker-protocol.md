@@ -1187,3 +1187,4 @@ array (as defined in OJS JSON Wire Format, Section 12).
 
 *Open Job Spec v1.0.0-rc.1 -- Worker Lifecycle and Coordination Protocol*
 *https://openjobspec.org*
+
