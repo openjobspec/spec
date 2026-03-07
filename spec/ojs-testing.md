@@ -588,3 +588,4 @@ test('data pipeline processes in order', async () => {
 | Date       | Change                        |
 |------------|-------------------------------|
 | 2026-02-13 | Initial release candidate.    |
+
