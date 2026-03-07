@@ -410,3 +410,4 @@ Making OpenTelemetry a required dependency for all SDKs was considered. This was
 4. **Log correlation**: Should the RFC define conventions for correlating structured logs with traces (e.g., injecting `trace_id` and `span_id` into log entries)?
 
 5. **Span status mapping**: How should OJS job outcomes map to OpenTelemetry span status? Proposed: `completed` → `OK`, `failed`/`discarded` → `ERROR`, `cancelled` → `OK` (cancellation is expected behavior, not an error).
+
