@@ -35,3 +35,4 @@ This tiered approach lets backends start with best-effort deduplication (suffici
 - **Encrypted field deduplication**: When client-side encryption is used (ADR-007), uniqueness checks on encrypted args fields are impossible since identical plaintext produces different ciphertext
 - **Key computation overhead**: Computing uniqueness keys across multiple dimensions adds per-enqueue overhead, especially when hashing large argument payloads
 - **Cross-queue uniqueness**: Uniqueness checks spanning multiple queues require global coordination, which conflicts with queue-level partitioning strategies
+
