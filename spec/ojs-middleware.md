@@ -1216,3 +1216,4 @@ The following table summarizes the normative requirements of this specification:
 
 *Open Job Spec v1.0.0-rc.1 -- Middleware Chain Specification*
 *https://openjobspec.org*
+
