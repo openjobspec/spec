@@ -63,6 +63,14 @@ tags:
     description: Cron job registration and management
   - name: Workflows
     description: Workflow orchestration — chain, group, batch primitives
+  - name: Schema Registry
+    description: Job type schema registration, versioning, and validation
+  - name: Debug
+    description: Experimental debugging endpoints — not available on all backends
+  - name: Admin
+    description: Administrative operations — job management, queue control, worker monitoring
+  - name: Events
+    description: Real-time event streaming via SSE and WebSocket
 
 paths:
   # ── System ──────────────────────────────────────────────────────────
@@ -641,6 +649,162 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  # ── Job Activation ────────────────────────────────────────────────────
+  /ojs/v1/jobs/{id}/activate:
+    post:
+      operationId: activateJob
+      summary: Activate a pending job
+      description: |
+        Transitions a job from `pending` state to `available`, making it eligible
+        for worker processing. This supports staging patterns where jobs must be
+        confirmed or approved before execution.
+      tags: [Jobs]
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Job activated
+          content:
+            application/openjobspec+json:
+              schema:
+                $ref: "#/components/schemas/JobResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ── Durable Execution Checkpoints ───────────────────────────────────
+  /ojs/v1/jobs/{id}/checkpoint:
+    get:
+      operationId: getCheckpoint
+      summary: Get job checkpoint
+      description: Returns the saved checkpoint state for a job, if any.
+      tags: [Jobs]
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Checkpoint found
+          content:
+            application/openjobspec+json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    description: Checkpoint state (application-defined)
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      operationId: saveCheckpoint
+      summary: Save job checkpoint
+      description: |
+        Saves checkpoint state for a running job. Overwrites any previous
+        checkpoint. Used for durable execution crash recovery.
+      tags: [Jobs]
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      requestBody:
+        required: true
+        content:
+          application/openjobspec+json:
+            schema:
+              type: object
+              required: [state]
+              properties:
+                state:
+                  description: Checkpoint state (application-defined)
+      responses:
+        "200":
+          description: Checkpoint saved
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: deleteCheckpoint
+      summary: Delete job checkpoint
+      description: Removes the checkpoint for a job after successful completion.
+      tags: [Jobs]
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Checkpoint deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ── SSE Event Stream ────────────────────────────────────────────────
+  /ojs/v1/events/stream:
+    get:
+      operationId: eventStream
+      summary: Subscribe to real-time events (SSE)
+      description: |
+        Opens a Server-Sent Events (SSE) stream for real-time job events.
+        Use the `channel` parameter to filter events by job ID or queue name.
+      tags: [Events]
+      parameters:
+        - name: channel
+          in: query
+          required: true
+          description: |
+            Event channel to subscribe to. Formats:
+            - `job:<job_id>` — events for a specific job
+            - `queue:<queue_name>` — events for all jobs in a queue
+          schema:
+            type: string
+      responses:
+        "200":
+          description: SSE event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ── Workers List ────────────────────────────────────────────────────
+  /ojs/v1/workers:
+    get:
+      operationId: listWorkers
+      summary: List registered workers
+      description: Returns all currently registered workers and their status.
+      tags: [Workers]
+      responses:
+        "200":
+          description: Worker list
+          content:
+            application/openjobspec+json:
+              schema:
+                type: object
+                properties:
+                  workers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        queues:
+                          type: array
+                          items:
+                            type: string
+                        state:
+                          type: string
+                          enum: [running, quiet, stopping]
+                        started_at:
+                          type: string
+                          format: date-time
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   # ── Admin API ────────────────────────────────────────────────────────
   # The Admin API provides operational management endpoints for monitoring
   # and controlling the OJS server. These endpoints are optional and may
@@ -1020,13 +1184,255 @@ paths:
         "101":
           description: WebSocket upgrade
 
-  # ── Debug API (Backend-specific) ─────────────────────────────────────
+  # ── Schema Registry API ─────────────────────────────────────────────
+
+  /ojs/v1/schemas:
+    post:
+      operationId: registerSchema
+      summary: Register a job schema
+      description: |
+        Registers a JSON Schema for a specific job type. Enables server-side
+        validation of job args on enqueue. Supports schema versioning —
+        each registration creates a new version.
+      tags: [Schema Registry]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [job_type, schema]
+              properties:
+                job_type:
+                  type: string
+                  description: The job type this schema validates.
+                schema:
+                  type: object
+                  description: A JSON Schema (draft 2020-12) for the job args.
+                description:
+                  type: string
+                  description: Human-readable description of this schema version.
+      responses:
+        "201":
+          description: Schema registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_type:
+                    type: string
+                  version:
+                    type: integer
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /ojs/v1/schemas/{jobType}:
+    get:
+      operationId: getSchema
+      summary: Get latest schema for a job type
+      description: Returns the latest registered schema for the given job type.
+      tags: [Schema Registry]
+      parameters:
+        - name: jobType
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Schema details
+          content:
+            application/json:
+              schema:
+                type: object
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteSchema
+      summary: Delete all schema versions for a job type
+      description: Removes all schema versions for the given job type.
+      tags: [Schema Registry]
+      parameters:
+        - name: jobType
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Schema deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /ojs/v1/schemas/{jobType}/versions:
+    get:
+      operationId: listSchemaVersions
+      summary: List schema versions
+      description: Returns all registered schema versions for a job type.
+      tags: [Schema Registry]
+      parameters:
+        - name: jobType
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Schema version list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      type: object
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /ojs/v1/schemas/{jobType}/versions/{version}:
+    get:
+      operationId: getSchemaVersion
+      summary: Get a specific schema version
+      description: Returns a specific version of the schema for a job type.
+      tags: [Schema Registry]
+      parameters:
+        - name: jobType
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Schema version details
+          content:
+            application/json:
+              schema:
+                type: object
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteSchemaVersion
+      summary: Delete a specific schema version
+      description: Removes a specific version of the schema for a job type.
+      tags: [Schema Registry]
+      parameters:
+        - name: jobType
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Schema version deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /ojs/v1/schemas/{jobType}/validate:
+    post:
+      operationId: validateAgainstSchema
+      summary: Validate args against schema
+      description: Validates a set of job args against the registered schema for a job type without enqueuing.
+      tags: [Schema Registry]
+      parameters:
+        - name: jobType
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                args:
+                  type: array
+                  description: The job args to validate.
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  errors:
+                    type: array
+                    items:
+                      type: string
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /ojs/v1/schemas/{jobType}/compatibility:
+    put:
+      operationId: setSchemaCompatibility
+      summary: Set compatibility mode for a job type
+      description: |
+        Sets the schema compatibility checking mode for a job type.
+        Modes: `none`, `backward`, `forward`, `full`.
+      tags: [Schema Registry]
+      parameters:
+        - name: jobType
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode]
+              properties:
+                mode:
+                  type: string
+                  enum: [none, backward, forward, full]
+      responses:
+        "200":
+          description: Compatibility mode updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_type:
+                    type: string
+                  mode:
+                    type: string
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Debug API (Experimental — not yet implemented in all backends) ───
 
   /ojs/v1/debug/status:
     get:
       operationId: debugStatus
       summary: Get debug status
-      description: Returns internal server state for debugging. Backend-specific; may not be available on all implementations.
+      description: |
+        Returns internal server state for debugging. Backend-specific; may not
+        be available on all implementations.
+
+        > **Experimental:** This endpoint is defined in the spec but not yet
+        > implemented in all backends. Check the manifest for availability.
       tags: [Debug]
       responses:
         "200":

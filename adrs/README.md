@@ -20,6 +20,11 @@ ADRs document significant architectural decisions made during the design of OJS,
 | [010](010-deduplication-strategy.md) | Deduplication Strategy | Accepted |
 | [011](011-opentelemetry-native-observability.md) | OpenTelemetry-Native Observability | Accepted |
 | [012](012-control-plane-data-plane-separation.md) | Control Plane / Data Plane Separation | Accepted |
+| [013](013-nats-jetstream-backend-architecture.md) | NATS JetStream Backend Architecture | Accepted |
+| [014](014-kafka-hybrid-backend-architecture.md) | Kafka Hybrid Backend Architecture | Accepted |
+| [015](015-sqs-dynamodb-backend-architecture.md) | SQS + DynamoDB Backend Architecture | Accepted |
+| [016](016-amqp-backend-architecture.md) | AMQP Backend Architecture | Accepted |
+| [017](017-ml-resource-extensions.md) | ML/AI Resource Requirement Extensions | Accepted |
 | [018](018-federation-topology.md) | Federation Topology — Client-Side Hub-Spoke and Mesh | Proposed |
 
 ## Creating New ADRs
