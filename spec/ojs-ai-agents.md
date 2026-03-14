@@ -13,6 +13,20 @@
 
 ---
 
+## Abstract
+
+This extension defines how AI agent workloads — LLM inference, tool-calling chains,
+multi-agent delegation, and Retrieval-Augmented Generation (RAG) pipelines — are expressed
+as OJS job envelopes. By encoding model selection, tool declarations, token budgets,
+delegation constraints, and conversation context into the standard OJS envelope, agent
+tasks gain the same reliability guarantees (exactly-once processing, retry policies,
+workflow composition, observability) that OJS provides for conventional background jobs.
+The extension introduces the `ext_agent_*` field namespace and a RECOMMENDED `ai.agent`
+job type convention, enabling any OJS-conformant backend to route, persist, retry, and
+monitor AI agent workloads without requiring agent-specific infrastructure.
+
+---
+
 ## Table of Contents
 
 1. [Introduction](#1-introduction)
@@ -20,12 +34,13 @@
 3. [Agent Task Lifecycle](#3-agent-task-lifecycle)
 4. [Tool Definition Schema](#4-tool-definition-schema)
 5. [Tool Result Schema](#5-tool-result-schema)
-6. [Error Handling](#6-error-handling)
-7. [Conformance Requirements](#7-conformance-requirements)
-8. [Examples](#8-examples)
-9. [Security Considerations](#9-security-considerations)
-10. [Prior Art](#10-prior-art)
-11. [Extension Interactions](#11-extension-interactions)
+6. [Tool Call Orchestration Pattern](#6-tool-call-orchestration-pattern)
+7. [Error Handling](#7-error-handling)
+8. [Conformance Requirements](#8-conformance-requirements)
+9. [Examples](#9-examples)
+10. [Security Considerations](#10-security-considerations)
+11. [Prior Art](#11-prior-art)
+12. [Extension Interactions](#12-extension-interactions)
 
 ---
 
@@ -85,6 +100,10 @@ All identifiers (job IDs, team IDs) SHOULD use UUIDv7 for time-sortability.
 | **Multi-agent system**  | A coordinated set of agent tasks that collaborate toward a shared goal.                   |
 | **Consensus**           | A decision-making pattern where multiple agents must agree before a result is accepted.   |
 | **Model fallback**      | The process of attempting alternative LLM models when the primary model is unavailable.   |
+| **Agent**               | A worker process that performs LLM inference and optionally invokes tools to accomplish a task. |
+| **Task**                | A unit of work submitted to an agent, represented as an OJS job with `ext_agent_*` fields.     |
+| **Tool call**           | A synchronous invocation of an external function during agent execution, producing a result that feeds back into the LLM context. |
+| **Context window**      | The maximum number of tokens an LLM can accept as input in a single inference call.            |
 
 ---
 
@@ -339,6 +358,82 @@ with error code `AGENT_INVALID_PARAMETER`.
 is needed, making consensus meaningless. A threshold above `1.0` is mathematically
 impossible to satisfy.
 
+### 2.7 Agent Job Type
+
+This section defines the `ai.agent` job type, a RECOMMENDED convention for identifying
+agent tasks. Jobs with a `type` field prefixed by `ai.agent` or `agent.*` SHOULD be
+treated as agent tasks by implementations that support this extension.
+
+The `ai.agent` job type defines the following convenience attributes, each of which maps
+directly to an `ext_agent_*` extension field:
+
+| Attribute       | Type     | Required | Maps To                    | Description                                                           |
+|-----------------|----------|----------|----------------------------|-----------------------------------------------------------------------|
+| `model`         | string   | Yes      | `ext_agent_model`          | Model identifier (e.g., `gpt-4o`, `claude-sonnet-4`).                |
+| `system_prompt` | string   | No       | —                          | System instructions passed as the system message to the LLM.         |
+| `tools`         | object[] | No       | `ext_agent_tools`          | Available tool definitions (see Section 4).                           |
+| `max_tokens`    | integer  | No       | `ext_agent_max_tokens`     | Maximum tokens for a single LLM response.                            |
+| `temperature`   | number   | No       | `ext_agent_temperature`    | Sampling temperature (0.0 -- 2.0).                                    |
+| `context`       | object[] | No       | —                          | Conversation context as an array of `{role, content}` message objects. |
+
+#### Attribute Semantics
+
+**`model`** (string, REQUIRED): The LLM model identifier to use for inference. This
+attribute MUST be present on all `ai.agent` jobs. When the job is processed, the
+implementation MUST map this value to `ext_agent_model` on the job envelope.
+
+**`system_prompt`** (string, OPTIONAL): The system-level instructions for the LLM. This
+content is sent as the `system` role message in the LLM API call. Implementations MUST
+pass this value as the first message in the LLM conversation when present. The
+`system_prompt` is not stored as a separate extension field; it is encoded in the `args`
+array or passed directly to the LLM provider.
+
+**`tools`** (object[], OPTIONAL): The available tool definitions. Each element MUST conform
+to the Tool Definition Schema (Section 4). This attribute maps directly to
+`ext_agent_tools`.
+
+**`max_tokens`** (integer, OPTIONAL): The maximum number of tokens the LLM may generate in
+a single response. Maps to `ext_agent_max_tokens`.
+
+**`temperature`** (number, OPTIONAL): The sampling temperature. Maps to
+`ext_agent_temperature`. Values outside the range `[0.0, 2.0]` MUST be rejected with
+error code `AGENT_INVALID_PARAMETER`.
+
+**`context`** (object[], OPTIONAL): An array of message objects representing the
+conversation history or context to include in the LLM prompt. Each message object MUST
+contain:
+
+| Field     | Type   | Required | Description                                           |
+|-----------|--------|----------|-------------------------------------------------------|
+| `role`    | string | Yes      | Message role: `system`, `user`, `assistant`, `tool`.  |
+| `content` | string | Yes      | Message content.                                      |
+
+#### Example: `ai.agent` Job
+
+```json
+{
+  "id": "019539a4-b6c7-7000-8000-000000000060",
+  "type": "ai.agent.summarize",
+  "args": ["Summarize the key findings from the Q4 earnings report"],
+  "created_at": "2026-02-23T14:00:00Z",
+  "options": {
+    "queue": "ai-agents",
+    "timeout_ms": 60000
+  },
+  "ext_agent_model": "gpt-4o",
+  "ext_agent_temperature": 0.3,
+  "ext_agent_max_tokens": 4096,
+  "ext_agent_token_budget": 10000,
+  "ext_agent_tools": [],
+  "ext_agent_output_format": "markdown"
+}
+```
+
+**Rationale for RECOMMENDED convention**: The `ai.agent` job type provides a uniform
+naming convention that enables middleware, routing rules, and observability tools to
+identify agent tasks without inspecting extension fields. Implementations that do not
+support this convention MUST still process the job if the `ext_agent_*` fields are present.
+
 ---
 
 ## 3. Agent Task Lifecycle
@@ -453,6 +548,64 @@ Implementations that support multi-agent coordination MUST implement the followi
 3. If all agents in the team have completed and consensus has not been reached, the
    implementation MUST report error code `AGENT_CONSENSUS_FAILED`.
 
+### 3.6 Heartbeat During Tool Calls
+
+The `active` state of an agent task may involve multiple sequential tool calls, each of
+which may be long-running. To prevent zombie agent tasks that appear active but are stalled,
+the worker MUST send a heartbeat (BEAT operation per OJS Core § 7.5) between consecutive
+tool calls. If the interval between heartbeats exceeds the configured heartbeat timeout,
+the job MAY be reclaimed by another worker.
+
+**Rationale for MUST heartbeat between tool calls**: An agent task executing a sequence of
+five tool calls may spend minutes in the `active` state. Without heartbeats, the backend
+has no way to distinguish a legitimately busy agent from one that has crashed mid-execution.
+Heartbeating between tool calls provides a reliable liveness signal at natural execution
+boundaries.
+
+Implementations SHOULD also send a heartbeat after each LLM inference call completes and
+before the next tool call begins. The heartbeat interval SHOULD NOT exceed half of the
+configured heartbeat timeout to provide a safety margin.
+
+### 3.7 Checkpoint Support
+
+Implementations SHOULD support checkpointing conversation state during long-running agent
+tasks. Checkpoints enable recovery after transient failures without repeating completed
+work.
+
+A checkpoint MUST include the following fields:
+
+| Field                  | Type     | Required | Description                                                   |
+|------------------------|----------|----------|---------------------------------------------------------------|
+| `messages`             | object[] | Yes      | Current conversation messages (system, user, assistant, tool). |
+| `tool_results`         | object[] | Yes      | Tool results accumulated so far.                               |
+| `tokens_used`          | integer  | Yes      | Total tokens consumed at the time of the checkpoint.           |
+| `tool_call_index`      | integer  | Yes      | Index of the last completed tool call.                         |
+| `created_at`           | string   | Yes      | RFC 3339 timestamp of the checkpoint.                          |
+
+Checkpoints SHOULD be stored using the `ext_agent_checkpoint` extension field, defined as:
+
+| Field                    | Type   | Required | Default | Description                                     |
+|--------------------------|--------|----------|---------|-------------------------------------------------|
+| `ext_agent_checkpoint`   | object | No       | `null`  | Latest checkpoint of the agent's execution state. |
+
+The `ext_agent_checkpoint` field is system-managed. Clients MUST NOT set this field at
+enqueue time; implementations MUST ignore any client-provided value.
+
+When a job is retried after a failure, the implementation SHOULD restore from the latest
+checkpoint to avoid repeating completed tool calls and LLM inferences. If a valid
+checkpoint exists, the implementation SHOULD:
+
+1. Restore the conversation messages from `messages`.
+2. Skip tool calls up to and including `tool_call_index`.
+3. Set `ext_agent_tokens_used` to the checkpoint's `tokens_used` value.
+4. Resume execution from the next pending tool call or LLM inference.
+
+**Rationale for SHOULD checkpoint**: Long-running agent tasks with many tool calls represent
+significant invested computation. Without checkpointing, a failure after completing 9 of 10
+tool calls forces the agent to repeat all 9 calls, wasting tokens and time. Checkpointing
+is SHOULD (not MUST) because it requires storage overhead that not all implementations can
+justify.
+
 ---
 
 ## 4. Tool Definition Schema
@@ -543,7 +696,134 @@ debugging.
 
 ---
 
-## 6. Error Handling
+## 6. Tool Call Orchestration Pattern
+
+Agent tool calls are typically executed inline by the worker process. However, complex tool
+calls — those requiring external service access, significant computation, or independent
+retry policies — MAY be dispatched as OJS child jobs using workflow primitives.
+
+### 6.1 Workflow-Based Tool Dispatch
+
+An agent MAY dispatch a tool call as a child job using OJS workflow primitives. This
+enables tool executions to benefit from OJS retry policies, timeout management, and
+observability independently of the parent agent task.
+
+- For **sequential tool calls**, the agent SHOULD use a `chain` workflow where each step
+  represents a tool invocation. The result of each step feeds into the next step's input
+  and ultimately back into the agent's conversation context.
+- For **parallel tool calls**, the agent SHOULD use a `group` workflow where each job
+  represents an independent tool invocation. The group's fan-in collects all tool results,
+  which are then fed back into the agent's conversation context as a batch.
+
+The child job's result MUST be recorded in the parent agent's `ext_agent_tool_results`
+array using the schema defined in Section 5. The `tool_call_id` in the result MUST match
+the identifier assigned by the LLM when it requested the tool invocation.
+
+### 6.2 Example: Chained Tool Calls via Workflow
+
+The following example shows an agent task that dispatches two sequential tool calls as a
+workflow chain. The first tool call performs a web search, and the second tool call
+summarizes the results. Both results feed back into the agent's conversation context.
+
+```json
+{
+  "id": "019539a4-b6c7-7000-8000-000000000070",
+  "type": "ai.agent.research_with_tools",
+  "args": ["Find and summarize recent advances in battery technology"],
+  "created_at": "2026-02-23T15:00:00Z",
+  "options": {
+    "queue": "ai-agents",
+    "timeout_ms": 300000
+  },
+  "ext_agent_model": "gpt-4o",
+  "ext_agent_token_budget": 50000,
+  "ext_agent_tools": [
+    {
+      "name": "web_search",
+      "description": "Search the web for current information",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search query" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "summarize_document",
+      "description": "Summarize a long document into key points",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string", "description": "Document text to summarize" }
+        },
+        "required": ["text"]
+      }
+    }
+  ],
+  "workflow": {
+    "type": "chain",
+    "steps": [
+      {
+        "type": "tool.web_search",
+        "args": ["battery technology breakthroughs 2026"],
+        "options": { "queue": "tool-execution", "timeout_ms": 30000 }
+      },
+      {
+        "type": "tool.summarize_document",
+        "args": [],
+        "options": { "queue": "tool-execution", "timeout_ms": 30000 }
+      }
+    ]
+  }
+}
+```
+
+### 6.3 Example: Parallel Tool Calls via Workflow
+
+When the LLM requests multiple tool calls simultaneously, a `group` workflow dispatches
+them in parallel:
+
+```json
+{
+  "workflow": {
+    "type": "group",
+    "jobs": [
+      {
+        "type": "tool.web_search",
+        "args": ["lithium-ion battery advances 2026"],
+        "options": { "queue": "tool-execution", "timeout_ms": 30000 }
+      },
+      {
+        "type": "tool.patent_search",
+        "args": ["solid-state battery patents filed 2026"],
+        "options": { "queue": "tool-execution", "timeout_ms": 30000 }
+      }
+    ]
+  }
+}
+```
+
+The group completes when all child jobs have completed. The collected results are merged
+into the agent's `ext_agent_tool_results` and injected into the conversation context as
+`tool` role messages for the next LLM inference call.
+
+### 6.4 Requirements
+
+1. Workflow-based tool dispatch is OPTIONAL. Implementations MAY execute tool calls inline
+   without creating child jobs.
+2. When workflow-based tool dispatch is used, the parent agent job MUST remain in the
+   `active` state until all child tool jobs have completed and their results have been
+   recorded.
+3. Child tool jobs MUST inherit the parent agent's remaining token budget. Token consumption
+   by child jobs MUST be deducted from the parent's `ext_agent_tokens_used`.
+4. Workflow-based tool dispatch requires OJS Conformance Level 3 (Workflows) as defined in
+   the OJS Workflow Specification. Implementations that do not support workflows MUST
+   execute tool calls inline.
+
+---
+
+## 7. Error Handling
 
 This section defines error codes specific to the AI Agent extension. These error codes
 are used in the job's error field when the job transitions to `retryable` or `discarded`.
@@ -556,7 +836,7 @@ covered by this section.
 monitoring, alerting, and retry logic. If each implementation invents its own codes,
 consumers cannot write portable error handling.
 
-### 6.1 Error Code Table
+### 7.1 Error Code Table
 
 | Code                              | HTTP Status | Retryable | Description                                                  |
 |-----------------------------------|-------------|-----------|--------------------------------------------------------------|
@@ -571,7 +851,7 @@ consumers cannot write portable error handling.
 | `AGENT_INVALID_PARAMETER`         | 400         | No        | An extension field value is outside its valid range.         |
 | `AGENT_TOOL_TIMEOUT`              | 504         | Yes       | A tool invocation exceeded `ext_agent_tool_timeout_ms`.      |
 
-### 6.2 Error Response Format
+### 7.2 Error Response Format
 
 When an agent task fails, the error MUST be reported using the standard OJS error envelope
 with the addition of agent-specific metadata:
@@ -594,9 +874,9 @@ The `details` field SHOULD include relevant extension fields that help diagnose 
 Implementations SHOULD include at minimum the fields that are directly related to the error
 condition.
 
-### 6.3 Retryable vs. Non-Retryable Errors
+### 7.3 Retryable vs. Non-Retryable Errors
 
-Errors marked as retryable in Section 6.1 indicate transient conditions that MAY resolve
+Errors marked as retryable in Section 7.1 indicate transient conditions that MAY resolve
 on a subsequent attempt. Non-retryable errors indicate permanent conditions that will not
 change without human intervention (e.g., correcting the tool list or increasing the budget).
 
@@ -615,12 +895,12 @@ and delay the visibility of the real problem.
 
 ---
 
-## 7. Conformance Requirements
+## 8. Conformance Requirements
 
 This section defines the conformance levels for implementations of the AI Agent Task
 Orchestration Extension.
 
-### 7.1 Conformance Levels
+### 8.1 Conformance Levels
 
 An implementation MAY claim conformance to this extension at one of three levels:
 
@@ -630,7 +910,7 @@ An implementation MAY claim conformance to this extension at one of three levels
 | **Standard** | Base + model fallback, output schema validation, tool validation. |
 | **Full** | Standard + RAG pipeline, multi-agent coordination, consensus.     |
 
-### 7.2 Base Conformance (MUST)
+### 8.2 Base Conformance (MUST)
 
 An implementation claiming Base conformance MUST support the following:
 
@@ -646,13 +926,13 @@ An implementation claiming Base conformance MUST support the following:
    job envelope, even those it does not actively process.
 
 4. **Error codes**: The implementation MUST use the error codes `AGENT_TOKEN_BUDGET_EXCEEDED`,
-   `AGENT_MAX_DELEGATION_DEPTH`, and `AGENT_INVALID_PARAMETER` as defined in Section 6.
+   `AGENT_MAX_DELEGATION_DEPTH`, and `AGENT_INVALID_PARAMETER` as defined in Section 7.
 
 5. **System-managed fields**: The implementation MUST manage `ext_agent_tokens_used` and
    `ext_agent_delegation_depth` as system-managed fields. Client-provided values for these
    fields MUST be ignored on enqueue.
 
-### 7.3 Standard Conformance (SHOULD)
+### 8.3 Standard Conformance (SHOULD)
 
 An implementation claiming Standard conformance SHOULD support the following in addition
 to all Base requirements:
@@ -672,7 +952,7 @@ to all Base requirements:
 5. **Token usage metadata**: The implementation SHOULD include token usage metadata in the
    job result envelope.
 
-### 7.4 Full Conformance (MAY)
+### 8.4 Full Conformance (MAY)
 
 An implementation claiming Full conformance MAY support the following in addition to all
 Standard requirements:
@@ -688,7 +968,12 @@ Standard requirements:
 3. **Consensus voting**: The implementation MAY implement consensus voting with configurable
    thresholds as described in Section 3.5.
 
-### 7.5 Conformance Test Matrix
+### 8.5 Conformance Test Matrix
+
+> **Note**: The Tool Call Orchestration Pattern (Section 6) uses workflow-based tool
+> dispatch, which requires OJS Conformance Level 3 (Workflows) as defined in the OJS
+> Workflow Specification. Implementations claiming Standard or Full conformance for this
+> extension that also support OJS Workflows SHOULD support workflow-based tool dispatch.
 
 | Requirement                    | Base | Standard | Full |
 |--------------------------------|------|----------|------|
@@ -702,18 +987,19 @@ Standard requirements:
 | Tool invocation validation     | —    | SHOULD   | MUST |
 | Tool result recording          | —    | SHOULD   | MUST |
 | Token usage metadata           | —    | SHOULD   | MUST |
+| Tool call via workflow dispatch | —    | SHOULD   | MUST |
 | RAG pipeline support           | —    | —        | MAY  |
 | Multi-agent coordination       | —    | —        | MAY  |
 | Consensus voting               | —    | —        | MAY  |
 
 ---
 
-## 8. Examples
+## 9. Examples
 
 All examples in this section are normative. Job IDs use UUIDv7 format. Timestamps use
 RFC 3339 format in UTC.
 
-### 8.1 Simple LLM Completion Job
+### 9.1 Simple LLM Completion Job
 
 A minimal agent task that performs a single LLM inference call with no tools.
 
@@ -737,7 +1023,7 @@ A minimal agent task that performs a single LLM inference call with no tools.
 }
 ```
 
-### 8.2 Tool-Calling Agent with Delegation
+### 9.2 Tool-Calling Agent with Delegation
 
 An agent that uses tools and delegates a sub-task to a child agent.
 
@@ -831,7 +1117,7 @@ The delegated child job would be enqueued as:
 }
 ```
 
-### 8.3 RAG Pipeline Job
+### 9.3 RAG Pipeline Job
 
 An agent task that retrieves context from external sources before LLM inference.
 
@@ -883,7 +1169,7 @@ An agent task that retrieves context from external sources before LLM inference.
 }
 ```
 
-### 8.4 Multi-Agent Coordination
+### 9.4 Multi-Agent Coordination
 
 A team of agents collaborating on a code review task with consensus voting.
 
@@ -933,7 +1219,7 @@ A team of agents collaborating on a code review task with consensus voting.
 Other agents in the same team would share `ext_agent_team_id` but have different roles
 (e.g., `"performance_reviewer"`, `"style_reviewer"`).
 
-### 8.5 Error Case: Token Budget Exceeded (Negative Example)
+### 9.5 Error Case: Token Budget Exceeded (Negative Example)
 
 *This example is informative, not normative.*
 
@@ -976,7 +1262,7 @@ requirement (1500) plus tokens already used (4892) would exceed the budget (5000
 error is non-retryable because retrying with the same budget will produce the same failure.
 The correct remediation is to re-enqueue with a larger `ext_agent_token_budget`.
 
-### 8.6 Error Case: Max Delegation Depth (Negative Example)
+### 9.6 Error Case: Max Delegation Depth (Negative Example)
 
 *This example is informative, not normative.*
 
@@ -1019,12 +1305,12 @@ require fewer delegation levels.
 
 ---
 
-## 9. Security Considerations
+## 10. Security Considerations
 
 AI agent tasks introduce security risks that do not exist in traditional background jobs.
 This section defines security requirements and recommendations.
 
-### 9.1 Prompt Injection Prevention
+### 10.1 Prompt Injection Prevention
 
 Implementations MUST sanitize tool results before feeding them back into the LLM context.
 Tool results may contain adversarial content designed to manipulate the agent's behavior
@@ -1041,7 +1327,7 @@ output. Sanitization SHOULD include at minimum:
 - Truncating tool results that exceed `ext_agent_context_window` to prevent context
   overflow attacks.
 
-### 9.2 API Key Isolation
+### 10.2 API Key Isolation
 
 Each agent task SHOULD use scoped API keys with the minimum permissions required for the
 task. Implementations SHOULD NOT share a single global API key across all agent tasks.
@@ -1056,7 +1342,7 @@ at execution time from a secure credential store.
 logged, and may be inspected by monitoring tools. Including API keys in the envelope
 would expose credentials to any system with queue read access.
 
-### 9.3 Cost Controls
+### 10.3 Cost Controls
 
 Token budgets (Section 2.1) serve as the primary cost control mechanism. Implementations
 MUST enforce token budgets server-side.
@@ -1069,7 +1355,7 @@ Implementations SHOULD provide configurable per-queue and per-team budget limits
 addition to per-job limits. This enables operators to set organization-level cost ceilings
 that individual jobs cannot exceed.
 
-### 9.4 Data Exfiltration Prevention
+### 10.4 Data Exfiltration Prevention
 
 Tools declared in `ext_agent_tools` MUST NOT be permitted to access data outside the
 scope declared by the job's context. Implementations SHOULD enforce network-level
@@ -1081,7 +1367,7 @@ access could be tricked (via prompt injection) into reading sensitive data from 
 systems and encoding it in its output. Tool access control is a defense-in-depth measure
 complementing prompt injection prevention.
 
-### 9.5 Audit Logging
+### 10.5 Audit Logging
 
 All tool invocations SHOULD be logged with sufficient detail for post-incident analysis.
 The log SHOULD include at minimum:
@@ -1105,11 +1391,11 @@ delegation depth.
 
 ---
 
-## 10. Prior Art
+## 11. Prior Art
 
 This section surveys existing AI agent orchestration systems and explains how OJS differs.
 
-### 10.1 LangChain / LangGraph
+### 11.1 LangChain / LangGraph
 
 LangChain provides Python and JavaScript libraries for building LLM-powered applications
 with tool use and agent loops. LangGraph extends this with a state-machine graph
@@ -1118,35 +1404,35 @@ as in-memory Python/JavaScript objects. OJS differs by encoding agent configurat
 transport-neutral, language-agnostic job envelope that any OJS-conformant backend can
 process.
 
-### 10.2 CrewAI
+### 11.2 CrewAI
 
 CrewAI defines agents with roles, goals, and backstories that collaborate on tasks. Agent
 definitions are Python classes bound to the CrewAI runtime. OJS adopts the role concept
 (`ext_agent_role`) and team concept (`ext_agent_team_id`) but represents them as
 serializable fields rather than runtime objects, enabling cross-language agent teams.
 
-### 10.3 AutoGen (Microsoft)
+### 11.3 AutoGen (Microsoft)
 
 AutoGen models multi-agent conversations as message threads between agent personas. State
 is maintained in memory and does not survive process restarts. OJS encodes the relevant
 state (delegation chain, token budget, tool results) in the durable job envelope,
 providing persistence and recoverability by default.
 
-### 10.4 OpenAI Assistants API
+### 11.4 OpenAI Assistants API
 
 The Assistants API provides server-side agent state management with tool use, file
 retrieval, and conversation threads. However, it is vendor-locked to OpenAI. OJS provides
 a vendor-neutral envelope that can target any LLM provider through the
 `ext_agent_provider` and `ext_agent_model` fields.
 
-### 10.5 Anthropic Tool Use
+### 11.5 Anthropic Tool Use
 
 Anthropic's tool use protocol defines a JSON format for tool definitions and results that
 is compatible with the OJS tool schema (Section 4). OJS builds on this compatibility by
 adding orchestration concerns (budgets, delegation, fallback) that the Anthropic API does
 not address.
 
-### 10.6 Key Differentiators
+### 11.6 Key Differentiators
 
 | Concern              | LangChain | CrewAI | AutoGen | OpenAI API | OJS AI Agents    |
 |----------------------|-----------|--------|---------|------------|------------------|
@@ -1160,11 +1446,11 @@ not address.
 
 ---
 
-## 11. Extension Interactions
+## 12. Extension Interactions
 
 This section defines how the AI Agent extension interacts with other OJS specifications.
 
-### 11.1 Interaction with OJS Retry Policy
+### 12.1 Interaction with OJS Retry Policy
 
 Model fallback (Section 3.2) is an internal mechanism of agent execution. Model fallback
 attempts MUST NOT count as job-level retries as defined by the OJS Retry Policy
@@ -1179,7 +1465,7 @@ inter-attempt behavior.
 Non-retryable agent errors (e.g., `AGENT_TOKEN_BUDGET_EXCEEDED`) SHOULD be added to the
 retry policy's `non_retryable_errors` list to prevent wasted retry attempts.
 
-### 11.2 Interaction with OJS Workflows
+### 12.2 Interaction with OJS Workflows
 
 Agent delegation chains (Section 2.3) are distinct from OJS workflow chains. A delegation
 chain is an agent-internal mechanism where one agent spawns a sub-agent; a workflow chain
@@ -1193,7 +1479,7 @@ When an agent task is part of a workflow chain, the workflow's data passing sema
 the result of the previous step is available via `JobContext.parent_results`. This result
 MAY be used to populate the agent's prompt or tool inputs.
 
-### 11.3 Interaction with OJS Middleware
+### 12.3 Interaction with OJS Middleware
 
 Middleware chains (enqueue and execution) can inspect and modify agent extension fields.
 This enables cross-cutting concerns such as:
@@ -1214,7 +1500,7 @@ through the mechanisms defined in this specification (Section 3.1 and Section 3.
 with atomicity requirements. Middleware that arbitrarily modifies them would break budget
 enforcement and depth tracking invariants.
 
-### 11.4 Interaction with OJS Encryption Extension
+### 12.4 Interaction with OJS Encryption Extension
 
 Agent prompts and outputs MAY contain sensitive data (PII, proprietary information,
 confidential queries). When the OJS encryption extension is active, implementations

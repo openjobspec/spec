@@ -1613,6 +1613,7 @@ components:
             - `retryable`: Failed, eligible for retry
             - `cancelled`: Cancelled (terminal)
             - `discarded`: Exhausted all retries (terminal)
+          example: "available"
         queue:
           type: string
           pattern: ^[a-z0-9][a-z0-9\-\.]*$
@@ -1624,67 +1625,84 @@ components:
           example: ["user@example.com", {"subject": "Welcome"}]
         meta:
           description: Optional metadata object for cross-cutting concerns
+          example: {"trace_id": "abc123", "correlation_id": "order-456"}
         priority:
           type: integer
           minimum: -100
           maximum: 100
           description: Job priority (-100 lowest, 100 highest). Higher priority jobs are fetched first.
+          example: 2
         attempt:
           type: integer
           minimum: 0
           description: Current attempt number (0-indexed before first execution)
+          example: 1
         max_attempts:
           type: integer
           minimum: 0
           description: Maximum number of execution attempts before discarding
+          example: 5
         timeout_ms:
           type: integer
           minimum: 0
           description: Job execution timeout in milliseconds
+          example: 30000
         worker_id:
           type: string
           description: ID of the worker currently processing the job
+          example: "worker-01.us-east-1"
         created_at:
           type: string
           format: date-time
           description: Timestamp when the job was created (ISO 8601 UTC)
+          example: "2026-03-15T10:30:00Z"
         enqueued_at:
           type: string
           format: date-time
           description: Timestamp when the job became available
+          example: "2026-03-15T10:30:01Z"
         started_at:
           type: string
           format: date-time
           description: Timestamp when the job was fetched by a worker
+          example: "2026-03-15T10:30:05Z"
         completed_at:
           type: string
           format: date-time
           description: Timestamp when the job reached a terminal state
+          example: "2026-03-15T10:30:07Z"
         cancelled_at:
           type: string
           format: date-time
           description: Timestamp when the job was cancelled
+          example: "2026-03-15T10:31:00Z"
         scheduled_at:
           type: string
           format: date-time
           description: Timestamp when the job should become available (for delayed jobs)
+          example: "2026-03-15T12:00:00Z"
         expires_at:
           type: string
           format: date-time
           description: Timestamp after which the job should be discarded if not yet processed
+          example: "2026-03-16T10:30:00Z"
         result:
           description: Result data set by the worker on successful completion
+          example: {"delivered": true, "message_id": "msg-789"}
         error:
           description: Error data from the most recent failed attempt
+          example: {"code": "SMTP_TIMEOUT", "message": "Connection timed out"}
         errors:
           type: array
           items: {}
           description: Array of errors from all failed attempts
+          example: [{"code": "SMTP_TIMEOUT", "message": "Connection timed out", "attempt": 1}]
         tags:
           type: array
           items:
             type: string
           description: Arbitrary tags for filtering and grouping
+          example: ["urgent", "transactional"]
         retry:
           $ref: "#/components/schemas/RetryPolicy"
         unique:
@@ -1692,10 +1710,12 @@ components:
         retry_delay_ms:
           type: integer
           description: Computed delay in milliseconds before next retry attempt
+          example: 5000
         parent_results:
           type: array
           items: {}
           description: Results from parent jobs in a workflow chain
+          example: [{"step": "validate", "valid": true}]
       additionalProperties: true
 
     # ── Enqueue Request ───────────────────────────────────────────────
@@ -1710,6 +1730,7 @@ components:
           type: string
           format: uuid
           description: Optional client-provided UUIDv7. Server generates one if omitted.
+          example: "019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6"
         type:
           type: string
           pattern: ^[a-z][a-z0-9_\-]*(\.[a-z][a-z0-9_\-]*)*$
@@ -1722,9 +1743,11 @@ components:
           example: ["user@example.com", {"subject": "Welcome"}]
         meta:
           description: Optional metadata object
+          example: {"trace_id": "abc123"}
         schema:
           type: string
           description: Optional schema URI for args validation
+          example: "https://schemas.example.com/email-send.json"
         options:
           $ref: "#/components/schemas/EnqueueOptions"
       additionalProperties: true
@@ -1744,10 +1767,12 @@ components:
           minimum: -100
           maximum: 100
           description: Job priority (-100 to 100)
+          example: 5
         timeout_ms:
           type: integer
           minimum: 0
           description: Job execution timeout in milliseconds
+          example: 30000
         scheduled_at:
           type: string
           format: date-time
@@ -1755,13 +1780,16 @@ components:
             Schedule the job for future execution (ISO 8601 UTC).
             Supports relative durations prefixed with `+` (e.g. `+PT5S` for 5 seconds from now).
         delay_until:
+          example: "2026-03-15T12:00:00Z"
           type: string
           format: date-time
           description: Alias for `scheduled_at`
+          example: "2026-03-15T12:00:00Z"
         expires_at:
           type: string
           format: date-time
           description: Discard the job if not processed by this time
+          example: "2026-03-16T10:30:00Z"
         retry:
           $ref: "#/components/schemas/RetryPolicy"
         retry_policy:
@@ -1773,13 +1801,16 @@ components:
           items:
             type: string
           description: Arbitrary tags for the job
+          example: ["transactional", "email"]
         visibility_timeout_ms:
           type: integer
           minimum: 0
           description: Visibility timeout in milliseconds for this job
+          example: 30000
         visibility_timeout:
           type: string
           description: Visibility timeout as ISO 8601 duration (e.g. `PT30S`)
+          example: "PT30S"
         metadata:
           description: Alternative field for metadata (merged into `meta`)
         rate_limit:
@@ -1810,6 +1841,7 @@ components:
         count:
           type: integer
           description: Number of jobs created
+          example: 3
 
     # ── Fetch Request/Response ────────────────────────────────────────
     FetchRequest:
@@ -1830,13 +1862,16 @@ components:
           minimum: 1
           default: 1
           description: Maximum number of jobs to fetch
+          example: 5
         worker_id:
           type: string
           description: Identifier of the requesting worker
+          example: "worker-01.us-east-1"
         visibility_timeout_ms:
           type: integer
           minimum: 0
           description: Override visibility timeout in milliseconds
+          example: 30000
 
     FetchResponse:
       type: object
@@ -1861,8 +1896,10 @@ components:
           type: string
           format: uuid
           description: ID of the job to acknowledge
+          example: "019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6"
         result:
           description: Optional result data from the job handler
+          example: {"delivered": true}
 
     AckResponse:
       type: object
@@ -1870,18 +1907,22 @@ components:
         acknowledged:
           type: boolean
           description: Whether the acknowledgment was accepted
+          example: true
         job_id:
           type: string
           format: uuid
           description: ID of the acknowledged job
+          example: "019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6"
         state:
           type: string
           enum: [completed]
           description: Resulting job state
+          example: "completed"
         completed_at:
           type: string
           format: date-time
           description: Timestamp of completion
+          example: "2026-03-15T10:30:07Z"
         job:
           $ref: "#/components/schemas/Job"
           description: Full job object (optional)
@@ -1897,12 +1938,14 @@ components:
           type: string
           format: uuid
           description: ID of the failed job
+          example: "019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6"
         error:
           $ref: "#/components/schemas/JobError"
         requeue:
           type: boolean
           default: false
           description: If true, immediately requeue the job without counting as a retry attempt
+          example: false
 
     JobError:
       type: object
@@ -1913,19 +1956,24 @@ components:
         code:
           type: string
           description: Machine-readable error code
+          example: "SMTP_TIMEOUT"
         type:
           type: string
           description: Error type/category
+          example: "connection_error"
         message:
           type: string
           description: Human-readable error message
+          example: "SMTP server connection timed out after 30s"
         retryable:
           type: boolean
           description: Whether this error is retryable
+          example: true
         details:
           type: object
           additionalProperties: true
           description: Additional error context
+          example: {"host": "smtp.example.com", "port": 587}
 
     NackResponse:
       type: object
@@ -1934,24 +1982,30 @@ components:
           type: string
           format: uuid
           description: ID of the failed job
+          example: "019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6"
         state:
           type: string
           enum: [retryable, discarded]
           description: Resulting job state after failure
+          example: "retryable"
         attempt:
           type: integer
           description: Current attempt number
+          example: 2
         max_attempts:
           type: integer
           description: Maximum attempts configured
+          example: 5
         next_attempt_at:
           type: string
           format: date-time
           description: When the next retry will be attempted (if retryable)
+          example: "2026-03-15T10:31:00Z"
         discarded_at:
           type: string
           format: date-time
           description: When the job was discarded (if max attempts exhausted)
+          example: "2026-03-15T10:35:00Z"
         job:
           $ref: "#/components/schemas/Job"
           description: Full job object (optional)
@@ -1966,20 +2020,24 @@ components:
         worker_id:
           type: string
           description: Worker identifier
+          example: "worker-01.us-east-1"
         job_id:
           type: string
           format: uuid
           description: Single active job ID (alternative to `active_jobs`)
+          example: "019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6"
         active_jobs:
           type: array
           items:
             type: string
             format: uuid
           description: List of job IDs the worker is actively processing
+          example: ["019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6", "019414d5-1a2b-7c3d-8e4f-a5b6c7d8e9f0"]
         visibility_timeout_ms:
           type: integer
           minimum: 0
           description: Visibility timeout extension in milliseconds
+          example: 60000
 
     HeartbeatResponse:
       type: object
@@ -1987,6 +2045,7 @@ components:
         state:
           type: string
           description: Current worker lifecycle state
+          example: "active"
         directive:
           type: string
           enum: ["", "quiet", "terminate"]
@@ -1995,15 +2054,18 @@ components:
             - empty string: continue normal operation
             - `quiet`: stop fetching new jobs, finish active ones
             - `terminate`: shut down gracefully
+          example: ""
         jobs_extended:
           type: array
           items:
             type: string
           description: Job IDs whose visibility timeout was extended
+          example: ["019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6"]
         server_time:
           type: string
           format: date-time
           description: Server timestamp for clock synchronization
+          example: "2026-03-15T10:30:30Z"
 
     # ── Queue Schemas ─────────────────────────────────────────────────
     QueueInfo:
@@ -2012,14 +2074,17 @@ components:
         name:
           type: string
           description: Queue name
+          example: "default"
         status:
           type: string
           enum: [active, paused]
           description: Queue status
+          example: "active"
         created_at:
           type: string
           format: date-time
           description: When the queue was first seen
+          example: "2026-01-10T08:00:00Z"
 
     QueueListResponse:
       type: object
@@ -2040,18 +2105,23 @@ components:
             name:
               type: string
               description: Queue name
+              example: "default"
             available:
               type: integer
               description: Jobs ready to be fetched
+              example: 142
             active:
               type: integer
               description: Jobs currently being processed
+              example: 8
             completed:
               type: integer
               description: Jobs that completed successfully
+              example: 1520
             paused:
               type: boolean
               description: Whether the queue is paused
+              example: false
 
     QueuePauseResumeResponse:
       type: object
@@ -2062,9 +2132,11 @@ components:
             name:
               type: string
               description: Queue name
+              example: "notifications"
             paused:
               type: boolean
               description: Current pause state
+              example: true
 
     # ── Dead Letter Schemas ───────────────────────────────────────────
     DeadLetterListResponse:
@@ -2084,10 +2156,12 @@ components:
         deleted:
           type: boolean
           description: Whether the job was deleted
+          example: true
         job_id:
           type: string
           format: uuid
           description: ID of the deleted job
+          example: "019414d4-8b2e-7c3a-b5d1-f0e2a3b4c5d6"
 
     # ── Cron Schemas ──────────────────────────────────────────────────
     CronJob:
@@ -2097,6 +2171,7 @@ components:
         name:
           type: string
           description: Unique cron job name
+          example: "daily-cleanup"
         expression:
           type: string
           description: Cron expression (5 or 6 fields)
@@ -2104,26 +2179,32 @@ components:
         timezone:
           type: string
           description: IANA timezone for evaluation (e.g. `America/New_York`)
+          example: "America/New_York"
         overlap_policy:
           type: string
           enum: [allow, skip, cancel]
           description: Behavior when a previous run is still active
+          example: "skip"
         enabled:
           type: boolean
           description: Whether the cron job is active
+          example: true
         job_template:
           $ref: "#/components/schemas/CronJobTemplate"
         created_at:
           type: string
           format: date-time
+          example: "2026-01-10T08:00:00Z"
         next_run_at:
           type: string
           format: date-time
           description: Next scheduled execution time
+          example: "2026-03-16T02:00:00Z"
         last_run_at:
           type: string
           format: date-time
           description: Last execution time
+          example: "2026-03-15T02:00:00Z"
 
     CronJobTemplate:
       type: object
@@ -2134,8 +2215,10 @@ components:
         type:
           type: string
           description: Job type to enqueue
+          example: "maintenance.cleanup"
         args:
           description: Job arguments
+          example: [{"max_age_days": 30}]
         options:
           $ref: "#/components/schemas/EnqueueOptions"
 
@@ -2150,6 +2233,7 @@ components:
         name:
           type: string
           description: Unique name for the cron job
+          example: "daily-report"
         expression:
           type: string
           description: Cron expression
@@ -2157,9 +2241,11 @@ components:
         timezone:
           type: string
           description: IANA timezone
+          example: "UTC"
         overlap_policy:
           type: string
           enum: [allow, skip, cancel]
+          example: "skip"
         job_template:
           $ref: "#/components/schemas/CronJobTemplate"
 
@@ -2191,9 +2277,11 @@ components:
           type: string
           enum: [chain, group, batch]
           description: Workflow type
+          example: "chain"
         name:
           type: string
           description: Optional human-readable workflow name
+          example: "order-processing"
         steps:
           type: array
           items:
@@ -2218,11 +2306,14 @@ components:
         name:
           type: string
           description: Step/job name within the workflow
+          example: "validate-payment"
         type:
           type: string
           description: Job type identifier
+          example: "payment.validate"
         args:
           description: Job arguments
+          example: [{"order_id": "order-123"}]
         options:
           $ref: "#/components/schemas/EnqueueOptions"
 
@@ -2234,37 +2325,47 @@ components:
           type: string
           format: uuid
           description: Workflow ID (UUIDv7)
+          example: "019414d5-1a2b-7c3d-8e4f-a5b6c7d8e9f0"
         name:
           type: string
           description: Workflow name
+          example: "order-processing"
         type:
           type: string
           enum: [chain, group, batch]
           description: Workflow type
+          example: "chain"
         state:
           type: string
           enum: [active, completed, failed, cancelled]
           description: Current workflow state
+          example: "active"
         steps_total:
           type: integer
           description: Total steps (chain workflows)
+          example: 3
         steps_completed:
           type: integer
           description: Completed steps (chain workflows)
+          example: 1
         jobs_total:
           type: integer
           description: Total jobs (group/batch workflows)
+          example: 5
         jobs_completed:
           type: integer
           description: Completed jobs (group/batch workflows)
+          example: 2
         callbacks:
           $ref: "#/components/schemas/WorkflowCallbacks"
         created_at:
           type: string
           format: date-time
+          example: "2026-03-15T10:30:00Z"
         completed_at:
           type: string
           format: date-time
+          example: "2026-03-15T10:35:00Z"
 
     WorkflowCallbacks:
       type: object
@@ -2284,8 +2385,10 @@ components:
         type:
           type: string
           description: Job type to enqueue
+          example: "notification.send"
         args:
           description: Job arguments
+          example: [{"channel": "slack", "message": "Workflow complete"}]
         options:
           $ref: "#/components/schemas/EnqueueOptions"
 
@@ -2305,41 +2408,50 @@ components:
           minimum: 0
           default: 3
           description: Maximum number of execution attempts
+          example: 5
         initial_interval:
           type: string
           default: "PT1S"
           description: Initial delay between retries (ISO 8601 duration, e.g. `PT1S`)
+          example: "PT1S"
         backoff_coefficient:
           type: number
           format: double
           minimum: 1.0
           default: 2.0
           description: Multiplier applied to delay between successive retries
+          example: 2.0
         max_interval:
           type: string
           default: "PT5M"
           description: Maximum delay between retries (ISO 8601 duration)
+          example: "PT5M"
         jitter:
           type: boolean
           default: true
           description: Add random jitter to retry delays to avoid thundering herd
+          example: true
         non_retryable_errors:
           type: array
           items:
             type: string
           description: Error codes that should not trigger a retry
+          example: ["INVALID_INPUT", "NOT_FOUND"]
         on_exhaustion:
           type: string
           enum: [discard, dead_letter]
           description: Action when all retries are exhausted
+          example: "dead_letter"
         backoff_type:
           type: string
           enum: [exponential, linear, constant]
           description: Backoff algorithm
+          example: "exponential"
         backoff_strategy:
           type: string
           enum: [exponential, linear, constant]
           description: Alias for `backoff_type`
+          example: "exponential"
 
     UniquePolicy:
       type: object
@@ -2350,19 +2462,23 @@ components:
           items:
             type: string
           description: Fields used to compute the uniqueness fingerprint
+          example: ["type", "args"]
         period:
           type: string
           description: Time window for uniqueness (ISO 8601 duration)
+          example: "PT1H"
         on_conflict:
           type: string
           enum: [reject, use_existing, replace]
           description: Behavior when a duplicate is detected
+          example: "reject"
         states:
           type: array
           items:
             type: string
             enum: [scheduled, available, pending, active, retryable, completed]
           description: States to check for existing duplicates
+          example: ["available", "active", "scheduled"]
 
     RateLimitPolicy:
       type: object
@@ -2372,6 +2488,7 @@ components:
           type: integer
           minimum: 1
           description: Maximum jobs processed per second
+          example: 100
 
     # ── Common Schemas ────────────────────────────────────────────────
     JobResponse:
@@ -2387,15 +2504,19 @@ components:
         total:
           type: integer
           description: Total number of items
+          example: 250
         limit:
           type: integer
           description: Maximum items per page
+          example: 25
         offset:
           type: integer
           description: Number of items skipped
+          example: 0
         has_more:
           type: boolean
           description: Whether more items are available
+          example: true
 
     # ── System Schemas ────────────────────────────────────────────────
     Manifest:
@@ -2412,51 +2533,68 @@ components:
             name:
               type: string
               description: Implementation name
+              example: "ojs-server"
             version:
               type: string
               description: Implementation version
+              example: "1.2.0"
             backend:
               type: string
               description: Backend type
+              example: "redis"
         conformance_level:
           type: integer
           minimum: 0
           maximum: 4
           description: Conformance level (0–4, each a superset of the previous)
+          example: 4
         protocols:
           type: array
           items:
             type: string
           description: Supported protocol bindings
+          example: ["http", "grpc"]
         backend:
           type: string
           description: Backend type identifier
+          example: "redis"
         capabilities:
           type: object
           description: Feature capability flags
           properties:
             batch_enqueue:
               type: boolean
+              example: true
             cron_jobs:
               type: boolean
+              example: true
             dead_letter:
               type: boolean
+              example: true
             delayed_jobs:
               type: boolean
+              example: true
             job_ttl:
               type: boolean
+              example: true
             priority_queues:
               type: boolean
+              example: true
             rate_limiting:
               type: boolean
+              example: true
             schema_validation:
               type: boolean
+              example: false
             unique_jobs:
               type: boolean
+              example: true
             workflows:
               type: boolean
+              example: true
             pause_resume:
               type: boolean
+              example: true
         extensions:
           type: object
           description: Registered extensions
@@ -2483,25 +2621,31 @@ components:
           type: string
           enum: [ok, degraded, error]
           description: Overall server health
+          example: "ok"
         version:
           type: string
           description: OJS spec version
+          example: "1.0"
         uptime_seconds:
           type: integer
           description: Server uptime in seconds
+          example: 86400
         backend:
           type: object
           properties:
             type:
               type: string
               description: Backend type (e.g. `redis`, `postgres`)
+              example: "redis"
             status:
               type: string
               enum: [connected, disconnected, error]
               description: Backend connection status
+              example: "connected"
             latency_ms:
               type: integer
               description: Backend ping latency in milliseconds
+              example: 2
             error:
               type: string
               description: Error message if backend is unhealthy
@@ -2546,19 +2690,25 @@ components:
             - unsupported
             - queue_paused
           description: Machine-readable error code
+          example: "invalid_request"
         type:
           type: string
           description: Error type (typically matches code)
+          example: "invalid_request"
         message:
           type: string
           description: Human-readable error description
+          example: "Invalid job payload: 'type' is required"
         retryable:
           type: boolean
           description: Whether the client should retry the request
+          example: false
         details:
           type: object
           additionalProperties: true
           description: Additional context (field names, validation details, resource info)
+          example: {"field": "type", "reason": "required field missing"}
         request_id:
           type: string
           description: Request ID for tracing
+          example: "req-019414d4-8b2e-7c3a"
