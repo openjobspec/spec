@@ -106,12 +106,68 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: "ok"
+                version: "1.0"
+                uptime_seconds: 86400
+                backend:
+                  type: "redis"
+                  status: "connected"
+                  latency_ms: 2
         "503":
           description: Server is unhealthy or backend is unavailable
           content:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+
+  /ojs/v1/health/detail:
+    get:
+      operationId: getHealthDetail
+      summary: Detailed health check
+      description: |
+        Returns detailed health information including backend diagnostics,
+        queue depths, worker counts, and resource utilization. Provides more
+        granular information than the basic health endpoint for monitoring dashboards.
+      tags: [System]
+      responses:
+        "200":
+          description: Detailed health information
+          content:
+            application/openjobspec+json:
+              schema:
+                $ref: "#/components/schemas/HealthDetailResponse"
+              example:
+                status: "ok"
+                version: "1.0"
+                uptime_seconds: 86400
+                backend:
+                  type: "redis"
+                  status: "connected"
+                  latency_ms: 2
+                  version: "7.2.4"
+                queues:
+                  total: 5
+                  active: 4
+                  paused: 1
+                workers:
+                  total: 12
+                  active: 10
+                  quiet: 2
+                jobs:
+                  total: 158420
+                  active: 45
+                  available: 230
+                  scheduled: 18
+                server_time: "2026-03-15T10:30:00Z"
+        "503":
+          description: Server is unhealthy
+          content:
+            application/openjobspec+json:
+              schema:
+                $ref: "#/components/schemas/HealthDetailResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   # ── Jobs ────────────────────────────────────────────────────────────
   /ojs/v1/jobs:
@@ -130,6 +186,18 @@ paths:
           application/openjobspec+json:
             schema:
               $ref: "#/components/schemas/EnqueueRequest"
+            example:
+              type: "email.send"
+              args: ["user@example.com", "Welcome to OpenJobSpec!", {"html": true}]
+              meta: {"trace_id": "trace-abc123", "correlation_id": "order-789"}
+              options:
+                queue: "email"
+                priority: 5
+                retry:
+                  max_attempts: 3
+                  initial_interval: "PT1S"
+                  backoff_coefficient: 2.0
+                tags: ["transactional", "welcome"]
       responses:
         "201":
           description: Job created
@@ -142,6 +210,20 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/JobResponse"
+              example:
+                job:
+                  id: "01912b4c-8e3a-7000-8000-000000000001"
+                  type: "email.send"
+                  state: "available"
+                  queue: "email"
+                  args: ["user@example.com", "Welcome to OpenJobSpec!", {"html": true}]
+                  meta: {"trace_id": "trace-abc123", "correlation_id": "order-789"}
+                  priority: 5
+                  attempt: 0
+                  max_attempts: 3
+                  created_at: "2026-03-15T10:30:00Z"
+                  enqueued_at: "2026-03-15T10:30:00Z"
+                  tags: ["transactional", "welcome"]
         "200":
           description: Existing job returned (unique job conflict with `use_existing` policy)
           content:
@@ -174,6 +256,23 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/JobResponse"
+              example:
+                job:
+                  id: "01912b4c-8e3a-7000-8000-000000000001"
+                  type: "image.resize"
+                  state: "active"
+                  queue: "media"
+                  args: ["s3://bucket/photo.jpg", {"width": 800, "height": 600, "format": "webp"}]
+                  meta: {"user_id": "user-42", "request_id": "req-xyz"}
+                  priority: 0
+                  attempt: 1
+                  max_attempts: 3
+                  timeout_ms: 60000
+                  worker_id: "worker-03.eu-west-1"
+                  created_at: "2026-03-15T10:28:00Z"
+                  enqueued_at: "2026-03-15T10:28:00Z"
+                  started_at: "2026-03-15T10:30:05Z"
+                  tags: ["media", "resize"]
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
@@ -198,6 +297,17 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/JobResponse"
+              example:
+                job:
+                  id: "01912b4c-8e3a-7000-8000-000000000001"
+                  type: "report.generate"
+                  state: "cancelled"
+                  queue: "reports"
+                  args: [{"report_type": "monthly", "month": "2026-02"}]
+                  attempt: 0
+                  max_attempts: 3
+                  created_at: "2026-03-15T10:00:00Z"
+                  cancelled_at: "2026-03-15T10:30:00Z"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
@@ -221,6 +331,23 @@ paths:
           application/openjobspec+json:
             schema:
               $ref: "#/components/schemas/BatchEnqueueRequest"
+            example:
+              jobs:
+                - type: "email.send"
+                  args: ["alice@example.com", "Your order shipped"]
+                  options:
+                    queue: "email"
+                    priority: 3
+                - type: "analytics.track"
+                  args: [{"event": "order_shipped", "user_id": "user-42"}]
+                  options:
+                    queue: "analytics"
+                - type: "webhook.deliver"
+                  args: ["https://partner.example.com/hook", {"order_id": "order-789"}]
+                  options:
+                    queue: "webhooks"
+                    retry:
+                      max_attempts: 5
       responses:
         "201":
           description: All jobs created
@@ -228,6 +355,30 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/BatchEnqueueResponse"
+              example:
+                jobs:
+                  - id: "01912b4c-8e3a-7000-8000-000000000010"
+                    type: "email.send"
+                    state: "available"
+                    queue: "email"
+                    args: ["alice@example.com", "Your order shipped"]
+                    attempt: 0
+                    created_at: "2026-03-15T10:30:00Z"
+                  - id: "01912b4c-8e3a-7000-8000-000000000011"
+                    type: "analytics.track"
+                    state: "available"
+                    queue: "analytics"
+                    args: [{"event": "order_shipped", "user_id": "user-42"}]
+                    attempt: 0
+                    created_at: "2026-03-15T10:30:00Z"
+                  - id: "01912b4c-8e3a-7000-8000-000000000012"
+                    type: "webhook.deliver"
+                    state: "available"
+                    queue: "webhooks"
+                    args: ["https://partner.example.com/hook", {"order_id": "order-789"}]
+                    attempt: 0
+                    created_at: "2026-03-15T10:30:00Z"
+                count: 3
         "400":
           $ref: "#/components/responses/BadRequest"
         "422":
@@ -253,6 +404,11 @@ paths:
           application/openjobspec+json:
             schema:
               $ref: "#/components/schemas/FetchRequest"
+            example:
+              queues: ["email", "default"]
+              count: 5
+              worker_id: "worker-01.us-east-1"
+              visibility_timeout_ms: 30000
       responses:
         "200":
           description: Jobs fetched (may be empty)
@@ -260,6 +416,18 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/FetchResponse"
+              example:
+                jobs:
+                  - id: "01912b4c-8e3a-7000-8000-000000000001"
+                    type: "email.send"
+                    state: "active"
+                    queue: "email"
+                    args: ["user@example.com", "Welcome to OpenJobSpec!", {"html": true}]
+                    attempt: 1
+                    max_attempts: 3
+                    worker_id: "worker-01.us-east-1"
+                    created_at: "2026-03-15T10:30:00Z"
+                    started_at: "2026-03-15T10:30:05Z"
         "400":
           $ref: "#/components/responses/BadRequest"
         "500":
@@ -281,6 +449,9 @@ paths:
           application/openjobspec+json:
             schema:
               $ref: "#/components/schemas/AckRequest"
+            example:
+              job_id: "01912b4c-8e3a-7000-8000-000000000001"
+              result: {"delivered": true, "message_id": "msg-20260315-abc"}
       responses:
         "200":
           description: Job acknowledged
@@ -288,6 +459,11 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/AckResponse"
+              example:
+                acknowledged: true
+                job_id: "01912b4c-8e3a-7000-8000-000000000001"
+                state: "completed"
+                completed_at: "2026-03-15T10:30:07Z"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
@@ -314,6 +490,14 @@ paths:
           application/openjobspec+json:
             schema:
               $ref: "#/components/schemas/NackRequest"
+            example:
+              job_id: "01912b4c-8e3a-7000-8000-000000000001"
+              error:
+                code: "SMTP_TIMEOUT"
+                type: "connection_error"
+                message: "SMTP server connection timed out after 30s"
+                retryable: true
+                details: {"host": "smtp.example.com", "port": 587}
       responses:
         "200":
           description: Failure recorded
@@ -321,6 +505,12 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/NackResponse"
+              example:
+                job_id: "01912b4c-8e3a-7000-8000-000000000001"
+                state: "retryable"
+                attempt: 2
+                max_attempts: 5
+                next_attempt_at: "2026-03-15T10:31:00Z"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
@@ -332,7 +522,6 @@ paths:
 
   /ojs/v1/workers/heartbeat:
     post:
-      operationId: workerHeartbeat
       summary: Worker heartbeat
       description: |
         Extends the visibility timeout of active jobs and reports worker liveness
@@ -347,6 +536,12 @@ paths:
           application/openjobspec+json:
             schema:
               $ref: "#/components/schemas/HeartbeatRequest"
+            example:
+              worker_id: "worker-01.us-east-1"
+              active_jobs:
+                - "01912b4c-8e3a-7000-8000-000000000001"
+                - "01912b4c-8e3a-7000-8000-000000000002"
+              visibility_timeout_ms: 60000
       responses:
         "200":
           description: Heartbeat acknowledged
@@ -354,6 +549,13 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/HeartbeatResponse"
+              example:
+                state: "active"
+                directive: ""
+                jobs_extended:
+                  - "01912b4c-8e3a-7000-8000-000000000001"
+                  - "01912b4c-8e3a-7000-8000-000000000002"
+                server_time: "2026-03-15T10:30:30Z"
         "400":
           $ref: "#/components/responses/BadRequest"
         "500":
@@ -364,8 +566,24 @@ paths:
     get:
       operationId: listQueues
       summary: List queues
-      description: Returns all known queues with their status.
+      description: Returns all known queues with their status and pagination.
       tags: [Queues]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 1000
+          description: Maximum number of queues to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Number of queues to skip
       responses:
         "200":
           description: Queue list
@@ -391,6 +609,13 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/QueueStatsResponse"
+              example:
+                queue:
+                  name: "email"
+                  available: 142
+                  active: 8
+                  completed: 15200
+                  paused: false
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
@@ -468,12 +693,32 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/DeadLetterListResponse"
+              example:
+                jobs:
+                  - id: "01912b4c-8e3a-7000-8000-000000000099"
+                    type: "webhook.deliver"
+                    state: "discarded"
+                    queue: "webhooks"
+                    args: ["https://partner.example.com/hook", {"event": "order.created"}]
+                    attempt: 5
+                    max_attempts: 5
+                    created_at: "2026-03-14T08:00:00Z"
+                    completed_at: "2026-03-15T09:00:00Z"
+                    error: {"code": "HTTP_502", "message": "Bad gateway from partner API"}
+                    errors:
+                      - {"code": "HTTP_502", "message": "Bad gateway", "attempt": 3}
+                      - {"code": "HTTP_502", "message": "Bad gateway", "attempt": 4}
+                      - {"code": "HTTP_502", "message": "Bad gateway", "attempt": 5}
+                pagination:
+                  total: 23
+                  limit: 50
+                  offset: 0
+                  has_more: false
         "500":
           $ref: "#/components/responses/InternalError"
 
   /ojs/v1/dead-letter/{id}/retry:
     post:
-      operationId: retryDeadLetterJob
       summary: Retry a dead letter job
       description: Re-enqueues a dead letter job for processing, resetting its attempt count.
       tags: [Dead Letter]
@@ -516,8 +761,24 @@ paths:
     get:
       operationId: listCronJobs
       summary: List cron jobs
-      description: Returns all registered cron job definitions.
+      description: Returns all registered cron job definitions with pagination.
       tags: [Cron]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 1000
+          description: Maximum number of cron jobs to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Number of cron jobs to skip
       responses:
         "200":
           description: Cron job list
@@ -525,6 +786,30 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/CronListResponse"
+              example:
+                crons:
+                  - name: "daily-cleanup"
+                    expression: "0 2 * * *"
+                    timezone: "UTC"
+                    overlap_policy: "skip"
+                    enabled: true
+                    job_template:
+                      type: "maintenance.cleanup"
+                      args: [{"max_age_days": 30}]
+                    created_at: "2026-01-10T08:00:00Z"
+                    next_run_at: "2026-03-16T02:00:00Z"
+                    last_run_at: "2026-03-15T02:00:00Z"
+                  - name: "hourly-report"
+                    expression: "0 * * * *"
+                    timezone: "America/New_York"
+                    overlap_policy: "allow"
+                    enabled: true
+                    job_template:
+                      type: "report.generate"
+                      args: [{"type": "hourly"}]
+                    created_at: "2026-02-01T12:00:00Z"
+                    next_run_at: "2026-03-15T11:00:00Z"
+                    last_run_at: "2026-03-15T10:00:00Z"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -541,6 +826,18 @@ paths:
           application/openjobspec+json:
             schema:
               $ref: "#/components/schemas/CronJobRequest"
+            example:
+              name: "daily-cleanup"
+              expression: "0 2 * * *"
+              timezone: "UTC"
+              overlap_policy: "skip"
+              job_template:
+                type: "maintenance.cleanup"
+                args: [{"max_age_days": 30, "tables": ["sessions", "temp_files"]}]
+                options:
+                  queue: "maintenance"
+                  retry:
+                    max_attempts: 2
       responses:
         "201":
           description: Cron job registered
@@ -548,6 +845,18 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/CronJobResponse"
+              example:
+                cron:
+                  name: "daily-cleanup"
+                  expression: "0 2 * * *"
+                  timezone: "UTC"
+                  overlap_policy: "skip"
+                  enabled: true
+                  job_template:
+                    type: "maintenance.cleanup"
+                    args: [{"max_age_days": 30, "tables": ["sessions", "temp_files"]}]
+                  created_at: "2026-03-15T10:30:00Z"
+                  next_run_at: "2026-03-16T02:00:00Z"
         "400":
           $ref: "#/components/responses/BadRequest"
         "500":
@@ -596,6 +905,26 @@ paths:
           application/openjobspec+json:
             schema:
               $ref: "#/components/schemas/WorkflowRequest"
+            example:
+              type: "chain"
+              name: "order-processing"
+              steps:
+                - name: "validate-payment"
+                  type: "payment.validate"
+                  args: [{"order_id": "order-789", "amount": 99.99, "currency": "USD"}]
+                - name: "charge-payment"
+                  type: "payment.charge"
+                  args: [{"order_id": "order-789"}]
+                - name: "send-confirmation"
+                  type: "email.send"
+                  args: ["customer@example.com", "Order confirmed!"]
+              callbacks:
+                on_success:
+                  type: "notification.send"
+                  args: [{"channel": "slack", "message": "Order order-789 processed"}]
+                on_failure:
+                  type: "alert.trigger"
+                  args: [{"severity": "high", "order_id": "order-789"}]
       responses:
         "201":
           description: Workflow created
@@ -603,6 +932,15 @@ paths:
             application/openjobspec+json:
               schema:
                 $ref: "#/components/schemas/WorkflowResponse"
+              example:
+                workflow:
+                  id: "01912b4c-9f00-7000-8000-000000000050"
+                  name: "order-processing"
+                  type: "chain"
+                  state: "active"
+                  steps_total: 3
+                  steps_completed: 0
+                  created_at: "2026-03-15T10:30:00Z"
         "400":
           $ref: "#/components/responses/BadRequest"
         "500":
@@ -672,6 +1010,60 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /ojs/v1/jobs/{id}/history:
+    get:
+      operationId: getJobHistory
+      summary: Get job state transition history
+      description: |
+        Returns the complete state transition history for a job, including
+        timestamps, the worker involved, and any associated error or result data
+        for each transition. Useful for debugging and auditing job execution.
+      tags: [Jobs]
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Job state history
+          content:
+            application/openjobspec+json:
+              schema:
+                $ref: "#/components/schemas/JobHistoryResponse"
+              example:
+                job_id: "01912b4c-8e3a-7000-8000-000000000001"
+                transitions:
+                  - from_state: null
+                    to_state: "available"
+                    timestamp: "2026-03-15T10:30:00Z"
+                    reason: "enqueued"
+                  - from_state: "available"
+                    to_state: "active"
+                    timestamp: "2026-03-15T10:30:05Z"
+                    reason: "fetched"
+                    worker_id: "worker-01.us-east-1"
+                  - from_state: "active"
+                    to_state: "retryable"
+                    timestamp: "2026-03-15T10:30:35Z"
+                    reason: "nack"
+                    error: {"code": "SMTP_TIMEOUT", "message": "Connection timed out"}
+                  - from_state: "retryable"
+                    to_state: "available"
+                    timestamp: "2026-03-15T10:31:35Z"
+                    reason: "retry_scheduled"
+                  - from_state: "available"
+                    to_state: "active"
+                    timestamp: "2026-03-15T10:31:40Z"
+                    reason: "fetched"
+                    worker_id: "worker-02.us-east-1"
+                  - from_state: "active"
+                    to_state: "completed"
+                    timestamp: "2026-03-15T10:31:42Z"
+                    reason: "ack"
+                    result: {"delivered": true}
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -832,6 +1224,22 @@ paths:
       summary: List all queues with details
       description: Returns detailed information about all queues including depth, throughput, and worker counts.
       tags: [Admin]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 1000
+          description: Maximum number of queues to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Number of queues to skip
       responses:
         "200":
           description: Queue list
@@ -1026,6 +1434,22 @@ paths:
       summary: List active workers
       description: Returns information about all connected workers.
       tags: [Admin]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 1000
+          description: Maximum number of workers to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Number of workers to skip
       responses:
         "200":
           description: Worker list
@@ -2262,6 +2686,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CronJob"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
 
     # ── Workflow Schemas ──────────────────────────────────────────────
     WorkflowRequest:
@@ -2497,6 +2923,54 @@ components:
         job:
           $ref: "#/components/schemas/Job"
 
+    JobHistoryResponse:
+      type: object
+      description: Job state transition history
+      properties:
+        job_id:
+          type: string
+          format: uuid
+          description: Job ID
+          example: "01912b4c-8e3a-7000-8000-000000000001"
+        transitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobStateTransition"
+          description: Ordered list of state transitions (oldest first)
+
+    JobStateTransition:
+      type: object
+      description: A single state transition in a job's lifecycle
+      properties:
+        from_state:
+          type: string
+          nullable: true
+          enum: [null, scheduled, available, pending, active, completed, retryable, cancelled, discarded]
+          description: Previous state (null for initial creation)
+          example: "available"
+        to_state:
+          type: string
+          enum: [scheduled, available, pending, active, completed, retryable, cancelled, discarded]
+          description: New state after transition
+          example: "active"
+        timestamp:
+          type: string
+          format: date-time
+          description: When the transition occurred
+          example: "2026-03-15T10:30:05Z"
+        reason:
+          type: string
+          description: Reason for the transition
+          example: "fetched"
+        worker_id:
+          type: string
+          description: Worker involved in the transition (if applicable)
+          example: "worker-01.us-east-1"
+        error:
+          description: Error data (if transition was due to failure)
+        result:
+          description: Result data (if transition was due to completion)
+
     Pagination:
       type: object
       description: Pagination metadata
@@ -2649,6 +3123,103 @@ components:
             error:
               type: string
               description: Error message if backend is unhealthy
+
+    HealthDetailResponse:
+      type: object
+      description: Detailed health check response with backend diagnostics
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, error]
+          description: Overall server health
+          example: "ok"
+        version:
+          type: string
+          description: OJS spec version
+          example: "1.0"
+        uptime_seconds:
+          type: integer
+          description: Server uptime in seconds
+          example: 86400
+        backend:
+          type: object
+          properties:
+            type:
+              type: string
+              description: Backend type
+              example: "redis"
+            status:
+              type: string
+              enum: [connected, disconnected, error]
+              description: Backend connection status
+              example: "connected"
+            latency_ms:
+              type: integer
+              description: Backend ping latency in milliseconds
+              example: 2
+            version:
+              type: string
+              description: Backend server version
+              example: "7.2.4"
+            error:
+              type: string
+              description: Error message if backend is unhealthy
+        queues:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total number of queues
+              example: 5
+            active:
+              type: integer
+              description: Number of active (unpaused) queues
+              example: 4
+            paused:
+              type: integer
+              description: Number of paused queues
+              example: 1
+        workers:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total registered workers
+              example: 12
+            active:
+              type: integer
+              description: Workers actively processing
+              example: 10
+            quiet:
+              type: integer
+              description: Workers in quiet mode
+              example: 2
+        jobs:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total job count across all states
+              example: 158420
+            active:
+              type: integer
+              description: Jobs currently being processed
+              example: 45
+            available:
+              type: integer
+              description: Jobs ready to be fetched
+              example: 230
+            scheduled:
+              type: integer
+              description: Jobs waiting for scheduled time
+              example: 18
+        server_time:
+          type: string
+          format: date-time
+          description: Current server timestamp
+          example: "2026-03-15T10:30:00Z"
 
     # ── Error Schemas ─────────────────────────────────────────────────
     ErrorResponse:
