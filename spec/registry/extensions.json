@@ -1,0 +1,34 @@
+{
+  "$schema": "https://openjobspec.org/spec/v1/extension-registry.schema.json",
+  "version": "0.1.0-draft",
+  "generated_from": "spec/spec/ojs-extension-registry.md",
+  "extensions": [
+    { "key": "ext_retry",       "status": "stable",       "spec": "ojs-retry.md",         "since": "v0.1" },
+    { "key": "ext_cron",        "status": "stable",       "spec": "ojs-cron.md",          "since": "v0.1" },
+    { "key": "ext_unique",      "status": "stable",       "spec": "ojs-unique-jobs.md",   "since": "v0.1" },
+    { "key": "ext_workflow",    "status": "stable",       "spec": "ojs-workflows.md",     "since": "v0.2" },
+    { "key": "ext_middleware",  "status": "stable",       "spec": "ojs-middleware.md",    "since": "v0.2" },
+    { "key": "ext_events",      "status": "stable",       "spec": "ojs-events.md",        "since": "v0.2" },
+    { "key": "ext_agent",       "status": "experimental", "spec": "ojs-ai-agents.md",     "successor": "ext_agent_v2" },
+    { "key": "ext_attest",      "status": "reserved",     "spec": "ojs-attest.md",        "moonshot": "M1" },
+    { "key": "ext_agent_v2",    "status": "reserved",     "spec": "ojs-ai-agents-v2.md",  "moonshot": "M2" },
+    { "key": "ext_runtime",     "status": "reserved",     "spec": "ojs-wasi-worker.md",   "moonshot": "M3" },
+    { "key": "ext_mirror",      "status": "reserved",     "spec": "ojs-mirror.md",        "moonshot": "M4" },
+    { "key": "ext_sourcemap",   "status": "reserved",     "spec": "ojs-sourcemap.md",     "moonshot": "M6" }
+  ],
+  "operations": [
+    { "name": "PUSH",                 "status": "core" },
+    { "name": "FETCH",                "status": "core" },
+    { "name": "ACK",                  "status": "core" },
+    { "name": "FAIL",                 "status": "core" },
+    { "name": "BEAT",                 "status": "core" },
+    { "name": "CANCEL",               "status": "core" },
+    { "name": "INFO",                 "status": "core" },
+    { "name": "VERIFY",               "status": "reserved", "spec": "ojs-attest.md" },
+    { "name": "PAUSE_HUMAN",          "status": "reserved", "spec": "ojs-ai-agents-v2.md" },
+    { "name": "RESUME_HUMAN",         "status": "reserved", "spec": "ojs-ai-agents-v2.md" },
+    { "name": "FORK_AGENT",           "status": "reserved", "spec": "ojs-ai-agents-v2.md" },
+    { "name": "MERGE_AGENT",          "status": "reserved", "spec": "ojs-ai-agents-v2.md" },
+    { "name": "TOOL_RETRY_ALTERNATE", "status": "reserved", "spec": "ojs-ai-agents-v2.md" }
+  ]
+}

@@ -1,0 +1,97 @@
+// wasi:ojs/worker — WIT interface for the Open Job Spec WASI worker world.
+//
+// This is the M3/P0 spike artifact (`p0-m3-spike-wit`) referenced from
+// MOONSHOT_BRIEF.md and `spec/ojs-wasi-0.1.md`. Version 0.1.0 freezes the
+// surface area enough for two host implementations (wasmtime + wasm-rs)
+// and two guest toolchains (TinyGo + cargo) to start in M3/P1.
+//
+// Resource lifetimes (lease semantics) are documented in
+// spec/ojs-wasi-0.1.md §"Lease Lifecycle". This file MUST NOT change
+// without bumping the package version per WASI 0.3 conventions.
+
+package wasi:ojs@0.1.0;
+
+interface types {
+    /// Every job carries an opaque envelope id (ULID, UUIDv7, etc).
+    type job-id = string;
+
+    /// Lease tokens are issued by the host and MUST be presented on every
+    /// heartbeat or completion call. Forging a lease token is a host-side
+    /// auth failure, not a guest one.
+    type lease-token = string;
+
+    /// Wall-clock seconds since the UNIX epoch. WASI 0.3 has no
+    /// monotonic-clock interop yet; we deliberately use wall clock and
+    /// rely on the host to clamp.
+    type unix-seconds = u64;
+
+    record envelope {
+        id: job-id,
+        kind: string,
+        args: list<u8>,         // canonical-JSON-encoded arg array
+        attempt: u32,
+        deadline: option<unix-seconds>,
+        ext: list<tuple<string, list<u8>>>, // ext_* keys
+    }
+
+    record completion {
+        result: list<u8>,       // canonical-JSON-encoded result
+        ext_attest: option<list<u8>>, // optional attestation envelope, RFC-0010
+    }
+
+    /// Errors a worker may return. Hosts translate these to OJS lifecycle
+    /// state transitions (retryable -> retry, discarded -> dead-letter).
+    variant job-error {
+        retryable(string),
+        discarded(string),
+        invalid-input(string),
+    }
+
+    /// Errors raised by host-side calls (lease violations, etc).
+    variant host-error {
+        lease-expired,
+        lease-not-found,
+        not-authorized,
+        backend-unavailable(string),
+    }
+}
+
+/// World imported by the OJS WASI worker. The host fulfils these
+/// functions; the guest module provides `run`.
+interface lease {
+    use types.{job-id, lease-token, unix-seconds, host-error};
+
+    /// Extend the lease for `extra-seconds`. MUST be called at least once
+    /// per (lease-duration / 2) wall-clock seconds. Returns the new
+    /// expiry time in unix seconds.
+    heartbeat: func(token: lease-token, extra-seconds: u32) -> result<unix-seconds, host-error>;
+
+    /// Voluntarily relinquish the lease without success or failure
+    /// (e.g. for shutdown). The job becomes `available` again.
+    release: func(token: lease-token) -> result<_, host-error>;
+}
+
+interface jobs {
+    use types.{envelope, completion, job-id, lease-token, job-error, host-error};
+
+    /// Fetch a single job. Blocks (host-side) up to `wait-seconds`.
+    fetch: func(queue: string, wait-seconds: u32) -> result<option<tuple<envelope, lease-token>>, host-error>;
+
+    /// Mark a job successful.
+    complete: func(token: lease-token, c: completion) -> result<_, host-error>;
+
+    /// Mark a job failed.
+    fail: func(token: lease-token, e: job-error) -> result<_, host-error>;
+
+    /// Enqueue a child job (workflow chaining). The returned id is the
+    /// new envelope's id.
+    enqueue: func(queue: string, kind: string, args: list<u8>) -> result<job-id, host-error>;
+}
+
+/// The world a guest worker module exports.
+world worker {
+    import lease;
+    import jobs;
+    /// The guest entrypoint. Hosts MAY invoke this in a loop or per-job.
+    export run: func() -> result<_, string>;
+}

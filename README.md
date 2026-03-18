@@ -1,4 +1,5 @@
 # Open Job Spec (OJS)
+[![Stability: stable](https://img.shields.io/badge/stability-stable-brightgreen.svg)](https://github.com/openjobspec/openjobspec/blob/main/STABILITY.md)
 
 **A universal, language-agnostic standard for background job processing.**
 
