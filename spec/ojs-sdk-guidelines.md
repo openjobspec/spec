@@ -902,7 +902,7 @@ await worker.start({ signal: controller.signal });
 
 ### 15.3 Python
 
-- The SDK MUST support Python 3.10+.
+- The SDK MUST support Python 3.11+.
 - All I/O methods MUST be `async def`. A synchronous facade MAY be provided.
 - The SDK MUST provide full type annotations (PEP 484) and pass `mypy --strict`.
 - Configuration MUST use keyword arguments with dataclass-style config objects for complex cases.
@@ -938,7 +938,7 @@ asyncio.run(main())
 
 ### 15.4 Java
 
-- The SDK MUST target Java 17+.
+- The SDK MUST target Java 21+.
 - Client, Worker, and Admin MUST be interfaces with default implementations.
 - Configuration MUST use the builder pattern.
 - The SDK SHOULD provide `CompletableFuture<T>` async variants for all I/O methods.
@@ -958,7 +958,7 @@ client.enqueue(Job.builder()
 
 ### 15.5 Ruby
 
-- The SDK MUST support Ruby 3.1+.
+- The SDK MUST support Ruby 3.2+.
 - All methods MUST use snake_case.
 - Configuration MUST support both block-style and hash-style:
 
