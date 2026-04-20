@@ -28,7 +28,6 @@
 11. [Observability](#11-observability)
 12. [Conformance Requirements](#12-conformance-requirements)
 13. [Prior Art](#13-prior-art)
-14. [Examples](#14-examples)
 
 ---
 

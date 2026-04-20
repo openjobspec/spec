@@ -293,7 +293,7 @@ CPU-only ML workloads (e.g., scikit-learn training, ONNX Runtime CPU inference, 
 | `ext_ml_model_checksum`  | string | No       | Integrity checksum (e.g., `sha256:abc123def...`)              |
 | `ext_ml_model_format`    | string | No       | Model format: `safetensors`, `gguf`, `onnx`, `torchscript`, `savedmodel`, `custom` |
 
-#### `ext_ml_model_id` (string)
+### `ext_ml_model_id` (string)
 
 A human-readable identifier for the model. This is used for routing jobs to workers that have the model loaded, and for tracking which model version processed each job.
 
@@ -404,7 +404,7 @@ When `ext_ml_model_checksum` is set, the worker MUST verify the checksum of the 
 | `ext_ml_precision`         | string  | No       | Compute precision: `fp32`, `fp16`, `bf16`, `fp8`, `int8`, `int4` |
 | `ext_ml_distributed_strategy` | string | No    | Distribution strategy: `none`, `data_parallel`, `tensor_parallel`, `pipeline_parallel`, `fsdp`, `deepspeed` |
 
-#### `ext_ml_timeout_seconds` (integer)
+### `ext_ml_timeout_seconds` (integer)
 
 When present, this timeout overrides the standard OJS job timeout for this job. ML workloads have highly variable execution times: a classification inference takes milliseconds, while a fine-tuning run may take hours.
 
