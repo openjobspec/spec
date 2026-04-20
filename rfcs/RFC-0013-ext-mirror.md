@@ -7,7 +7,7 @@
 - **Target Spec Version**: 1.2.0
 - **Reserved in registry**: `spec/spec/registry/extensions.json` → `ext_mirror`
 - **Related moonshot**: M4 Live Shadow Migration (`ojs-mirror/`)
-- **Stability tier**: ![labs](https://img.shields.io/badge/OJS-Labs-blueviolet) (see [STABILITY.md](../../STABILITY.md#ojs-labs))
+- **Stability tier**: ![labs](https://img.shields.io/badge/OJS-Labs-blueviolet) (see [STABILITY.md](https://github.com/openjobspec/openjobspec/blob/main/STABILITY.md#ojs-labs))
 
 ## Summary
 

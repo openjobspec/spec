@@ -495,7 +495,7 @@ The conformance manifest MUST be a JSON object with the following structure:
     "name": "ojs-redis",
     "version": "1.0.0",
     "language": "go",
-    "repository": "https://github.com/openjobspec/ojs-redis"
+    "repository": "https://github.com/openjobspec/ojs-backend-redis"
   },
   "conformance_level": 2,
   "conformance_tier": "runtime",
@@ -1389,7 +1389,7 @@ The OJS project provides badge assets in the following formats:
 Example Markdown:
 
 ```markdown
-[![OJS Conformant Level 2 (Runtime)](https://img.shields.io/badge/OJS-Level%202%20Runtime-blue)](https://openjobspec.org/conformance)
+[![OJS Conformant Level 2 (Runtime)](https://img.shields.io/badge/OJS-Level%202%20Runtime-blue)](https://github.com/openjobspec/ojs-conformance)
 ```
 
 ### 7.3 Badge Requirements

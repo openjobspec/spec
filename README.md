@@ -5,7 +5,7 @@
 
 <!--
 [![Spec Version](https://img.shields.io/badge/spec-v1.0.0--rc.1-blue)](https://openjobspec.org)
-[![License](https://img.shields.io/badge/license-Apache%202.0-green)](../LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green)](https://github.com/openjobspec/spec/blob/main/LICENSE)
 [![Conformance](https://img.shields.io/badge/conformance-passing-brightgreen)](spec/ojs-conformance.md)
 -->
 
@@ -132,8 +132,8 @@ The specification is accompanied by machine-readable schema definitions maintain
 
 | Repository | Description |
 |------------|-------------|
-| **[ojs-json-schema](../ojs-json-schema)** | JSON Schema definitions for job envelopes, policies, and all extension data structures |
-| **[ojs-proto](../ojs-proto)** | Protocol Buffers definitions for the gRPC binding and binary wire format |
+| **[ojs-json-schema](https://github.com/openjobspec/ojs-json-schema)** | JSON Schema definitions for job envelopes, policies, and all extension data structures |
+| **[ojs-proto](https://github.com/openjobspec/ojs-proto)** | Protocol Buffers definitions for the gRPC binding and binary wire format |
 
 These repositories ensure naming consistency across protocols and provide the foundation for code generation, validation tooling, and IDE autocomplete in any language.
 
@@ -208,9 +208,8 @@ We welcome contributions from everyone. Whether you are filing a bug, proposing 
 
 ## License
 
-Open Job Spec is licensed under the [Apache License, Version 2.0](../LICENSE).
+Open Job Spec is licensed under the [Apache License, Version 2.0](https://github.com/openjobspec/spec/blob/main/LICENSE).
 
 ---
 
 **[openjobspec.org](https://openjobspec.org)**
-
