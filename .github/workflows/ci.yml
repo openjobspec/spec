@@ -10,6 +10,16 @@ permissions:
   contents: read
 
 jobs:
+  release-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Release Please progression
+        run: python3 scripts/check-release-config.py
+
   markdown-lint:
     runs-on: ubuntu-latest
     steps:
