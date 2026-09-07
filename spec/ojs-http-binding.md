@@ -160,7 +160,7 @@ Example response for a deprecated endpoint:
 HTTP/1.1 200 OK
 Deprecation: true
 Sunset: Sat, 01 Mar 2028 00:00:00 GMT
-Link: <https://openjobspec.org/spec/v2/migration>; rel="successor-version"
+Link: <https://github.com/openjobspec/spec/blob/main/spec/ojs-migration.md>; rel="successor-version"
 ```
 
 > *Rationale*: A 12-month deprecation window gives production deployments ample time to migrate. The `Sunset` header is a machine-readable signal that allows automated monitoring tools to alert operators before a deprecated endpoint is removed.

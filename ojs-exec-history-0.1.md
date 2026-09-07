@@ -2,7 +2,7 @@
 
 - **Stage**: 0 (Strawman)
 - **Version**: `ojs-exec-history/0.1`
-- **Validator**: [`ojs-conformance/lib/exechistory.go`](../ojs-conformance/lib/exechistory.go)
+- **Validator**: [`ojs-conformance`](https://github.com/openjobspec/ojs-conformance)
 - **Related moonshot**: M6 Replay Studio + Learned Scheduler (`files/MOONSHOT_BRIEF.md`)
 - **Status**: M6/P0 spike artifact
 
@@ -49,7 +49,8 @@ Each line is a JSON object with the following fields:
 
 ## Validation Rules
 
-The reference Go validator [`Replay`](../ojs-conformance/lib/exechistory.go)
+The reference Go validator `Replay` is maintained in the
+[`ojs-conformance`](https://github.com/openjobspec/ojs-conformance) repository.
 enforces:
 
 1. `schema_version` is in `AcceptedSchemaVersions`.

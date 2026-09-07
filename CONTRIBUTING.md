@@ -35,13 +35,13 @@ The conformance test suite is the source of truth for whether an implementation 
 
 ## RFC Process
 
-OJS uses a staged RFC process modeled after the [GraphQL RFC process](https://github.com/graphql/graphql-spec/blob/main/CONTRIBUTING.md), with explicit time floors at each stage to ensure thorough review. All RFCs are tracked in the [`rfcs/`](../rfcs/) directory.
+OJS uses a staged RFC process modeled after the [GraphQL RFC process](https://github.com/graphql/graphql-spec/blob/main/CONTRIBUTING.md), with explicit time floors at each stage to ensure thorough review. All RFCs are tracked in the [`rfcs/`](rfcs/) directory.
 
 ### Stage 0 -- Strawman
 
 **Goal:** Identify a real problem and sketch a rough direction.
 
-- Open a pull request using the [RFC template](../rfcs/RFC-0000-template.md).
+- Open a pull request using the [RFC template](rfcs/RFC-0000-template.md).
 - The PR MUST include a clear problem statement with motivating use cases.
 - A rough solution sketch is encouraged but not required.
 - **Minimum discussion period: 2 weeks** from the date the PR is opened.
@@ -127,9 +127,22 @@ All specification documents MUST follow these conventions to ensure consistency 
 - Keep sentences short. One requirement per sentence.
 - Define terms on first use and maintain a glossary if the document introduces more than five terms.
 
+## Release Automation
+
+Release Please reads `release-please-config.json` and
+`.release-please-manifest.json`. The manifest records the last published
+version; it MUST NOT be advanced to an unreleased target or paired with a
+persistent `release-as`.
+
+The `RELEASE_PLEASE_TOKEN` secret MUST be a GitHub App installation token or a
+fine-grained personal access token with contents and pull-request write access.
+It must be capable of triggering downstream tag workflows. The release
+workflow intentionally has no `GITHUB_TOKEN` fallback because tag events
+created by the repository `GITHUB_TOKEN` do not trigger publication workflows.
+
 ## Licensing
 
-By submitting a contribution to this project, you agree that your contribution is licensed under the [Apache License, Version 2.0](../LICENSE). You represent that you have the right to license your contribution under this license.
+By submitting a contribution to this project, you agree that your contribution is licensed under the [Apache License, Version 2.0](https://github.com/openjobspec/spec/blob/main/LICENSE). You represent that you have the right to license your contribution under this license.
 
 ---
 
